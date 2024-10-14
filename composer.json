@@ -1,0 +1,11 @@
+{
+    "name": "lenovo/integrate-airtable",
+    "autoload": {
+        "psr-4": {
+            "Lenovo\\IntegrateAirtable\\": "src/"
+        }
+    },
+    "require": {
+        "guzzlehttp/guzzle": "^7.9"
+    }
+}

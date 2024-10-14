@@ -1,0 +1,13 @@
+
+.cred-field {
+  width:50%;
+}
+.remove-btn {
+  margin-left:5px;
+}
+.int-repeater-row {
+  display:flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-bottom: 10px;
+}
