@@ -13,6 +13,7 @@ if( ! function_exists('int_enqueue_admins_externals') ) {
     
     function int_enqueue_admins_externals() {
         wp_enqueue_style( 'int-art-admin-style', INT_ART_PLUGIN_URL . 'assets/admin/css/admin.css', array(), time() , false );
+        wp_enqueue_script( 'int-art-admin-script', INT_ART_PLUGIN_URL . 'assets/admin/js/admin.script.js', array(), time(), true );
     }
     add_action( 'admin_enqueue_scripts', 'int_enqueue_admins_externals' );
 }

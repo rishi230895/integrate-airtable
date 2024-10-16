@@ -66,7 +66,7 @@ register_deactivation_hook( __FILE__, 'int_art_activator' );
 if ( ! function_exists('int_art_plugin_settings_link') ) {
     function int_art_plugin_settings_link($links) {
         // Create a settings link for the plugin
-        $settings_link = '<a href="' . admin_url('admin.php?page=int_airtable_integration') . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . admin_url('admin.php?page=int_airtable_settings') . '">' . __('Settings') . '</a>';
         // Add the settings link to the beginning of the links array
         array_unshift($links, $settings_link);
         return $links;

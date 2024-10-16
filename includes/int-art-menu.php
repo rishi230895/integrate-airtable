@@ -17,7 +17,7 @@ use GuzzleHttp\Client;
 
 if( ! function_exists("int_airtable_credentials_section_cb")   ) {
     function int_airtable_credentials_section_cb() {
-        echo '<p>' . __('Enter Airtable API Credentials.', INT_ART_TEXT_DOMAIN) . '</p>';
+        echo '<small class="note">' . __('Note: You need to enter all Airtable credentials provided below. If any field is missing, you will not be able to access the <b>Sync Airtable Columns Names</b> section or the <b>Column Field Mapping with API</b> section.', INT_ART_TEXT_DOMAIN) . '</small>';
     }
 }
 
@@ -49,14 +49,14 @@ if(  ! function_exists("int_register_settings") ) {
             'int_airtable_credentials_section',
             __('Airtable Credentials', INT_ART_TEXT_DOMAIN),
             'int_airtable_credentials_section_cb',
-            'int_airtable_integration'
+            'int_airtable_settings'
         );
 
         add_settings_field(
             'int_airtable_base_id',
             __('Base ID', INT_ART_TEXT_DOMAIN),
             'int_airtable_text_field_cb',
-            'int_airtable_integration',
+            'int_airtable_settings',
             'int_airtable_credentials_section',
             ['label_for' => 'int_airtable_base_id']
         );
@@ -68,7 +68,7 @@ if(  ! function_exists("int_register_settings") ) {
             'int_airtable_table_id',
             __('Table ID or Name', INT_ART_TEXT_DOMAIN),
             'int_airtable_text_field_cb',
-            'int_airtable_integration',
+            'int_airtable_settings',
             'int_airtable_credentials_section',
             ['label_for' => 'int_airtable_table_id']
         );
@@ -80,7 +80,7 @@ if(  ! function_exists("int_register_settings") ) {
             'int_airtable_api_token',
             __('API Token', INT_ART_TEXT_DOMAIN),
             'int_airtable_text_field_cb',
-            'int_airtable_integration',
+            'int_airtable_settings',
             'int_airtable_credentials_section',
             ['label_for' => 'int_airtable_api_token']
         );
@@ -100,25 +100,89 @@ if( ! function_exists("int_render_admin_page") ) {
         ?>
         <div class="wrap"> 
 
+          <div class="">
+            <h2><?php echo __("Airtable Integration Settings" , INT_ART_TEXT_DOMAIN); ?></h2>
+            <p class="setting-desc">
+                <?php echo __("This page features a credentials section where users must enter their credentials. Once completed, they can access the 'Fetch Columns' section to retrieve columns from Airtable. After that, the admin user can proceed to the 'Field Mapping' section, allowing them to map column names to WordPress post keys." , INT_ART_TEXT_DOMAIN);  ?>
+            </p>
+          </div>
             <!-- Form for Airtable Credentials -->
 
-            <form method="post" action="options.php">
-                <?php
-                    settings_fields('int_airtable_group');
-                    do_settings_sections('int_airtable_integration');
-                    submit_button(__('Save Credentials', INT_ART_TEXT_DOMAIN));
-                ?>
-            </form>
-
-            <?php if ( int_are_airtable_credentials_saved() ) : ?>
-                <form method="post" action="">
-                    <button type="submit" name="fetch_airtable_data" class="button button-primary">
-                        <?php _e('Fetch Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
-                    </button>
+            <div class="credential-wrap airtable-fetched-columns-wrap">
+                <form method="post" action="options.php">
+                    <?php
+                        settings_fields('int_airtable_group');
+                        do_settings_sections('int_airtable_settings');
+                        submit_button(__('Save Credentials', INT_ART_TEXT_DOMAIN));
+                    ?>
                 </form>
+            </div>
+
+          
+            <?php if ( int_are_airtable_credentials_saved() ) : ?>
+                <div class="airtable-fetched-columns-wrap">
+
+                    <form method="post" action="">
+                        <h2><?php echo __("Sync airtable columns names"); ?></h2>
+                        <small class="note">
+                        <?php 
+                            echo __("Note: This button will fetch all columns from your Airtable table and display them in the fields below, allowing you to map your column names with corresponding Airtable posts. When you click this button, it will trigger an API request to fetch all the columns from the Airtable table." , INT_ART_TEXT_DOMAIN); 
+                        ?>
+                        </small>
+
+                        <div>
+                            <button type="submit" name="fetch_airtable_data" class="button button-primary">
+                                <?php _e('Fetch Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
+                            </button>
+
+                            <button type="submit" name="remove_columns_data" class="button button-primary remove-columns">
+                                <?php _e('Remove Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
+                            </button>
+                        </div>
+                        
+                    </form>
+                    
+                </div>             
             <?php endif; ?>
 
+
+
+
+
+
             <?php 
+
+            if (isset($_POST['save_columns'])) {
+                    $new_columns = [];
+                    if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
+                        foreach ($_POST['column_select'] as $key => $data) {
+                            if (isset($data['column_name'], $data['selected'])) {
+                                if($data['selected']) {
+                                    $new_columns[$key] = [
+                                        'column_name'   => sanitize_text_field($data['column_name']),
+                                        'selected'      => sanitize_text_field($data['selected'])
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                    
+                    update_option('int_column_selected_keys', $new_columns); 
+
+
+                    /** Hit api to create or update the airtable records */
+
+                    if(  get_option( 'int_column_selected_keys' )  ) {
+                        if( int_check_meta_key_exists('title') ) {
+                            /** Fetch the airtable records from platform insert or update the records... */
+                           int_initalize_columns_fetch();
+                        }                        
+                    }
+
+
+                }
+
+                /** ON button submit Fetch Airtable Columns Data */
 
                 if (isset($_POST['save_columns'])) {
                     $new_columns = [];
@@ -142,6 +206,7 @@ if( ! function_exists("int_render_admin_page") ) {
 
                     if(  get_option( 'int_column_selected_keys' )  ) {
                         if( int_check_meta_key_exists('title') ) {
+                            /** Fetch the airtable records from platform insert or update the records... */
                            int_initalize_columns_fetch();
                         }                        
                     }
@@ -150,58 +215,90 @@ if( ! function_exists("int_render_admin_page") ) {
                 }
 
 
-                if ( int_column_key_exists() ) {
+                if ( int_column_key_exists()  && int_are_airtable_credentials_saved() ) {
 
                     $columns_keys = get_option("int_column_keys");
                     $saved_columns = get_option('int_column_selected_keys', []);
                     $saved_columns = $saved_columns ? $saved_columns : [];
-
+                
                     if ( $columns_keys && is_array($columns_keys) && count($columns_keys) > 0) {
                         ?>
-                        <form method="post" action="">
-                            <?php foreach ($columns_keys as $key => $col) { 
-                                $selected_value = isset($saved_columns[$key]['selected']) ? $saved_columns[$key]['selected'] : ''; 
-                                ?>
-                                <div id="<?php echo 'int_meta_row-' . $key; ?>">
-                                    <input type="text" id="<?php echo strtolower($col) . '-' . $key; ?>" value="<?php echo esc_attr($col); ?>" readonly />
-                                    <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_' . strtolower($col) . '_' . $key; ?>" class="column-select">
-                                        <option value="">Select an option</option>
-                                        <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?>>Title</option>
-                                        <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>Description</option>
-                                        <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>Feature Image</option>
-                                        <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>Meta Field</option>
-                                    </select>
-                                    <!-- Hidden field for column name -->
-                                    <input type="hidden" name="column_select[<?php echo $key; ?>][column_name]" value="<?php echo esc_attr($col); ?>" />
-                                </div>
-                            <?php } ?>
-                            <input type="submit" name="save_columns" value="Save" />
-                        </form>
+                    
+                        <div class="airtable-fetched-columns-wrap">
+                            <form method="post" action="">
+                            <h2><?php echo __("Column Field Mapping with API"); ?></h2>
+                            <small class="note">
+                            <?php  
+                                echo __(
+                                    "In this section, you need to map each Airtable column to the appropriate field types for creating or updating WordPress posts. It is mandatory to select a field for the \"Title\" in order to create an Airtable record in your WordPress post. These fields are mapped to fetch data from Airtable and match it with corresponding fields in WordPress posts.When you click the <b>Create or Update Records</b> button, it will either create new records or update existing ones from Airtable into your WordPress Airtable posts.", 
+                                    INT_ART_TEXT_DOMAIN
+                                );   
+                            ?>
+
+                            </small>
+
+                          
+                                <table class="meta-row-table">
+                                    <thead>
+                                        <tr>
+                                            <th><?php echo __( "Column Name" , INT_ART_TEXT_DOMAIN );  ?></th>
+                                            <th><?php echo __( "Select Field Key" , INT_ART_TEXT_DOMAIN );  ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($columns_keys as $key => $col) { 
+                                            $selected_value = isset($saved_columns[$key]['selected']) ? $saved_columns[$key]['selected'] : ''; 
+                                        ?>
+                                        <tr id="<?php echo 'int_meta_row-' . $key; ?>">
+                                            <!-- Column Name (Readonly Input) -->
+                                            <td>
+                                                <input type="text" id="<?php echo 'column_name_' . $key; ?>" value="<?php echo esc_attr($col); ?>" readonly />
+                                                <!-- Hidden field for column name -->
+                                                <input type="hidden" name="column_select[<?php echo $key; ?>][column_name]" value="<?php echo esc_attr($col); ?>" />
+                                            </td>
+                                            
+                                            <!-- Select Option -->
+                                            <td>
+                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select">
+                                                    <option value="">
+                                                        <?php echo __( "Select field key" , INT_ART_TEXT_DOMAIN ); ?>
+                                                    </option>
+                                                    <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
+                                                        <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                </select>
+                                            </td> 
+                                            
+                                        </tr>
+                                        <?php } ?>
+                                        <table>
+                                            <tr>
+                                                <td>
+                                                    <input type="submit" name="save_columns" value="Create or Update Records" class="create-post-btn button button-primary"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </tbody>
+                                </table>
+                             
+                            </form>
+                        </div>
                         <?php
                     }
                 }
+                
+                
                
             ?>
-
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const selects = document.querySelectorAll('.column-select');
-                        const restrictedValues = ['title', 'desc', 'feature_img'];
-
-                        selects.forEach(select => {
-                            select.addEventListener('change', function() {
-                                const selectedValue = this.value;
-                                if (restrictedValues.includes(selectedValue)) {
-                                    selects.forEach(otherSelect => {
-                                        if (otherSelect !== this && restrictedValues.includes(otherSelect.value) && otherSelect.value === selectedValue) {
-                                            otherSelect.selectedIndex = 0; 
-                                        }
-                                    });
-                                }
-                            });
-                        });
-                    });
-                </script>
         </div>
         <?php
     }   
@@ -212,6 +309,7 @@ if( ! function_exists("int_render_admin_page") ) {
 if ( isset($_POST['fetch_airtable_data'] ) ) {
 
     $columns = int_fetch_airtable_column_names();
+    $columns = $columns ? $columns : [];
 
     /** Update option */
     
@@ -221,6 +319,15 @@ if ( isset($_POST['fetch_airtable_data'] ) ) {
     else {
         add_option("int_column_keys" , $columns);
     }
+}
+
+
+/** Fetch and display column names on button click */
+
+if ( isset($_POST['remove_columns_data'] ) ) {
+
+    delete_option("int_column_keys" );
+
 }
 
 
@@ -238,9 +345,3 @@ if(  ! function_exists("int_add_admin_menu")  ) {
     }
     add_action('admin_menu', 'int_add_admin_menu');
 }
-
-
-// echo "<pre>";
-//     var_dump(get_option("int_column_selected_keys"));
-// echo "</pre>";
-// exit;

@@ -2,10 +2,6 @@
 
 use GuzzleHttp\Client;
 
-
-
-
-
 /**
  * Deletes the thumbnail image and its attachment for a specific post.
  *
@@ -242,6 +238,7 @@ if( ! function_exists( 'int_check_meta_key_exists' ) ) {
 
     function int_check_meta_key_exists( $meta_key ) {
         $meta_data = get_option( 'int_column_selected_keys' );
+
         if ( ! $meta_data || empty( $meta_key ) ) {
             return false;
         }
@@ -314,11 +311,13 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
         }
 
         // Delete existing attachment if it exists
+
         $existing_attachment_id = get_post_thumbnail_id($post_id);
         if ( $existing_attachment_id ) {
-            wp_delete_attachment($existing_attachment_id, true);
-            // Optionally remove the post thumbnail association
-            delete_post_thumbnail($post_id);
+            $delete_result = wp_delete_attachment($existing_attachment_id, true); 
+            if ($delete_result) {
+                delete_post_thumbnail($post_id); // Remove from post  
+            } 
         }
 
         // Initialize cURL to fetch the image data
@@ -423,6 +422,50 @@ if (!function_exists('int_art_get_admin_user_ids')) {
 add_action('init', 'int_art_get_admin_user_ids');
 
 
+
+/** Delete posts which is not present in airtable  */
+
+
+if(  ! function_exists("int_art_delete_company_posts")  ) {
+
+    function int_art_delete_company_posts( $all_lists_ids ) {
+
+         $args = [
+            'post_type'      => 'air-sync',
+            'posts_per_page' => -1, // Fetch all matching posts
+            'post_status'    => 'publish',
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'int_art_column_id',
+                    'compare' => 'EXISTS', // No meta key
+                ],
+                [
+                    'key'     => 'int_art_column_id',
+                    'value'   => $all_lists_ids,
+                    'compare' => 'NOT IN',     // Meta key exists but doesn't match any ID in the array
+                ],
+            ],
+        ];
+
+        $query = new WP_Query( $args );
+
+        if ( $query->have_posts() ) {
+            while ( $query->have_posts() ) {
+                $query->the_post();
+                $post_id = get_the_ID();
+                $air_row_id = get_post_meta( $post_id, 'int_art_column_id', true );
+                wp_delete_post( $post_id, true ); // true for permanent deletion
+                int_art_sync_log( 'Deleted post ID: ' . $post_id . ' with int_art_column_id: ' . ( $air_row_id ? $air_row_id : 'not set' ) );
+            }
+        }
+
+        // Reset post data after the custom query
+        wp_reset_postdata();
+    }
+}
+
+
 /** 
  * Creates a new post in the Airtable sync.
  *
@@ -446,10 +489,9 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
         $author_ids = int_art_get_admin_user_ids();
         $author_id  = $author_ids && is_array($author_ids) ? $author_ids[0] : 1;
 
-        $post_title         = sanitize_text_field($data['create_post']['title']);
-        $post_desc          = sanitize_text_field($data['create_post']['desc']);
-        $post_feature_img   = sanitize_text_field($data['create_post']['feature_img']);
-
+        $post_title         = $data['create_post']['title'];
+        $post_desc          = $data['create_post']['desc'];
+        $post_feature_img   = $data['create_post']['feature_img'];
 
         if( $post_title ) {
             
@@ -473,7 +515,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             /** Get image attachment id if image url is exist. */
 
             if( $post_feature_img && is_array($post_feature_img) ) {
-                echo int_art_sync_log("ads");
                 int_art_get_attachment_id($post_feature_img[0]['url'], $post_id);
             }
           
@@ -516,11 +557,7 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
 
         $post_title         = $data['create_post']['title'];
         $post_desc          = $data['create_post']['desc'];
-        $post_feature_img   = $data['create_post']['feature_img'];
-
-        echo "<pre>";
-            var_dump($post_feature_img);
-        echo "</pre>";
+        $post_feature_img   = $data['create_post']['feature_img']; 
 
         if( $post_title ) {
             
@@ -547,10 +584,11 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             $existing_attachment_id = get_post_thumbnail_id($post_id);
 
             if ( $existing_attachment_id ) {
-                wp_delete_attachment($existing_attachment_id, true);
-                delete_post_thumbnail($post_id);
+                $delete_result = wp_delete_attachment($existing_attachment_id, true); 
+                if ($delete_result) {
+                    delete_post_thumbnail($post_id); // Remove from post  
+                } 
             }
-
 
             /** Get image attachment id if image url is exist. */
 
@@ -621,25 +659,25 @@ if ( ! function_exists('int_art_check_post') ) {
  * based on the fetched data.
  */
 
- if( ! function_exists("int_initalize_columns_fetch") ) {
+ if (!function_exists("int_initalize_columns_fetch")) {
 
-     function int_initalize_columns_fetch() {
+    function int_initalize_columns_fetch() {
 
         $base_id    = get_option('int_airtable_base_id');
         $table_id   = get_option('int_airtable_table_id');
         $api_token  = get_option('int_airtable_api_token');
- 
-        if ( empty($base_id) || empty($table_id) || empty($api_token) ) {
-            return __('Airtable credentials are missing.', INT_ART_TEXT_DOMAIN );
+        
+        if (empty($base_id) || empty($table_id) || empty($api_token)) {
+            return __('Airtable credentials are missing.', INT_ART_TEXT_DOMAIN);
         }
- 
+        
         $client = new Client([
             'base_uri' => 'https://api.airtable.com/v0/'
         ]);
- 
+        
         $all_records = [];
         $offset = null;
- 
+        
         try {
             do {
                 $query_params = [
@@ -658,8 +696,8 @@ if ( ! function_exists('int_art_check_post') ) {
                 $response = $client->request('GET', "$base_id/$table_id", $query_params);
                 $data = json_decode($response->getBody(), true);
 
-                if ( ! isset($data['records']) || empty($data['records']) ) {
-                    if( get_option('int_column_keys') ) {
+                if (!isset($data['records']) || empty($data['records'])) {
+                    if (get_option('int_column_keys')) {
                         update_option("int_column_keys", "");
                     } else {
                         add_option("int_column_keys", "");
@@ -670,100 +708,176 @@ if ( ! function_exists('int_art_check_post') ) {
                 $all_records = array_merge($all_records, $data['records']); 
                 $offset = isset($data['offset']) ? $data['offset'] : null;
 
-                if( $all_records && is_array( $all_records ) ) {
+                if ($all_records && is_array($all_records)) {
 
-                    /** If records exist we fetch all columns key to for create and store the data  */
-
+                    // Initializing column variables
                     $title_column_name       = "";
                     $feature_column_name     = "";
                     $desc_column_name        = "";
                     $meta_field_columns_name = [];
 
-                    /** Get column name dynamically */
+                    // Dynamically get column names
+                    $title_column_name = int_check_meta_key_exists('title')['column_name'] ?? '';
+                    $feature_column_name = int_check_meta_key_exists('feature_img')['column_name'] ?? '';
+                    $desc_column_name = int_check_meta_key_exists('desc')['column_name'] ?? '';
 
-                    if( int_check_meta_key_exists('title')  ) {
-                        $title_column_name = int_check_meta_key_exists('title')['column_name'];
-                    }
+                    // Get all selected meta fields
+                    $columns_keys = get_option('int_column_selected_keys');
 
-                    if( int_check_meta_key_exists('feature_img')  ) {
-                        $feature_column_name = int_check_meta_key_exists('feature_img')['column_name'];
-                    }
-
-                    if( int_check_meta_key_exists('desc')  ) {
-                        $desc_column_name  = int_check_meta_key_exists('desc')['column_name'];
-                    }
-
-                    /** Get all meta fields */
-
-                    $columns_keys = get_option( 'int_column_selected_keys' );
-
-                    if(  $columns_keys  ) {
-                        foreach( $columns_keys  as $key ) {
-                            if( $key['selected'] == 'meta_field' ) {
-                                $meta_field_columns_name[] =  $key['column_name'];
+                    if ($columns_keys) {
+                        foreach ($columns_keys as $key) {
+                            if ($key['selected'] == 'meta_field') {
+                                $meta_field_columns_name[] = $key['column_name'];
                             }
                         }
                     }
 
-                    foreach($all_records as $field) {
-                        if( array_key_exists( "fields" ,  $field ) ) {
-
+                    // Process each record
+                    foreach ($all_records as $field) {
+                        if (array_key_exists("fields", $field)) {
                             $field_data = $field['fields'];
                             $prepare_data = [];
 
-                            $id                 =   $field['id'];
-                            $created_time       =   $field['createdTime'];
-                            $title              =   $title_column_name ? $field_data[$title_column_name] : "";
-                            $feature_img        =   $feature_column_name ? $field_data[$feature_column_name] : "";
-                            $desc               =   $desc_column_name ? $field_data[$desc_column_name] : "";
+                            // Safely extract data from $field_data with default fallback values
 
-                            echo "<pre>";
-                            var_dump($feature_img);
-                            echo "</pre>";
-            
-                            if( $id ) {
-                                $prepare_data['Column id'] =  $id;
+                            $id = $field['id'] ?? '';
+                            $created_time = $field['createdTime'] ?? '';
+                            $title = $title_column_name && isset($field_data[$title_column_name]) ? $field_data[$title_column_name] : '';
+                            $feature_img = $feature_column_name && isset($field_data[$feature_column_name]) ? $field_data[$feature_column_name] : '';
+                            $desc = $desc_column_name && isset($field_data[$desc_column_name]) ? $field_data[$desc_column_name] : '';
+
+
+                            // Prepare data for post creation or update
+                            if ($id) {
+                                $prepare_data['Column id'] = $id;
                             }
-
-                            if( $created_time  ) {
-                                $prepare_data['Created Time'] =  $created_time;
+                            if ($created_time) {
+                                $prepare_data['Created Time'] = $created_time;
                             }
-
-                            if( $meta_field_columns_name && is_array($meta_field_columns_name) && count($meta_field_columns_name) > 0  ) {
-                                foreach( $meta_field_columns_name as $col_name ) {
-                                    $prepare_data[$col_name] = $field_data[$col_name];
+                            if (!empty($meta_field_columns_name)) {
+                                foreach ($meta_field_columns_name as $col_name) {
+                                    $prepare_data[$col_name] = $field_data[$col_name] ?? '';  // Use default empty value if not found
                                 }
                             }
 
+                            // Prepare post creation array
                             $post_creation = [
-                                'id'            =>  $id,
-                                'title'         =>  $title,
-                                'desc'          =>  $desc,
-                                'feature_img'   =>  $feature_img 
+                                'id'            => $id,
+                                'title'         => $title,
+                                'desc'          => $desc,
+                                'feature_img'   => $feature_img
                             ];
 
                             $prepare_data['create_post'] = $post_creation;
-                            $post_data = int_art_check_post( 'int_art_column_id' , $id );
 
-                            if( $post_data ) {
+                            // Check if post exists and update or create new
+
+                            $post_data = int_art_check_post('int_art_column_id', $id);
+
+                            if ($post_data) {
                                 $post_id = $post_data[0]->ID;
-                                int_update_airtable_data( $prepare_data , $post_id );
-                            }
+                                int_update_airtable_data($prepare_data, $post_id);
+                            } 
                             else {
-                                int_create_new_airtable_data( $prepare_data );   
+                                int_create_new_airtable_data($prepare_data);
                             }
                         }
                     }
                 }
-
-
-               
-
+                
             } while ($offset);
 
         } catch (Exception $e) {
             return __('Error fetching column names: ', INT_ART_TEXT_DOMAIN) . $e->getMessage();
         }
-     }
- }
+
+        // Optionally delete posts that no longer exist in Airtable...
+
+        int_art_synchronization_companies();
+    }
+}
+
+
+ /** 
+  *   Delete airtable data
+  */
+
+
+
+  if( ! function_exists("int_art_synchronization_companies") ) {
+
+    function int_art_synchronization_companies() {
+
+        set_time_limit(0);
+
+        $base_id    = get_option('int_airtable_base_id');
+        $table_id   = get_option('int_airtable_table_id');
+        $api_token  = get_option('int_airtable_api_token');
+
+        $all_lists_ids = [];
+        $total_records = 0; // Counter to track total records
+
+        $client = new Client([
+            'base_uri' => 'https://api.airtable.com/v0/'
+        ]);
  
+
+        $is_offset = true;
+        $offset = null; // Initialize offset
+
+        while( $is_offset ) {
+            try {
+                // Add the 'offset' query param only if it's set
+                $query_params = [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $api_token
+                    ],
+                    'query' => [
+                        'pageSize' => 100,
+                    ]
+                ];
+
+                // If there's an offset, add it to the request
+                if( $offset ) {
+                    $request_params['query']['offset'] = $offset;
+                }
+
+                $response = $client->request('GET', "$base_id/$table_id", $query_params);
+                $body = $response->getBody()->getContents();
+                $data = json_decode($body, true);
+
+                if( ! $data ) {
+                    int_art_sync_log('Error: Fetch List - data is empty' . json_encode($data));
+                    return false;
+                }
+
+                if( array_key_exists('records', $data) ) {
+                    foreach( $data['records'] as $row_data ) {
+                        if( $row_data ) {
+                            if( array_key_exists('id', $row_data) ) {
+                                $all_lists_ids[] = $row_data['id'];
+                                $total_records++;
+                            }
+                        }
+                    }
+                }
+
+                // Check for the 'offset' in the response to continue fetching
+                if( array_key_exists('offset', $data) ) {
+                    $offset = $data['offset'];
+                } else {
+                    $is_offset = false;
+                }
+
+            } catch (GuzzleHttp\Exception\RequestException $e) {
+                int_art_sync_log($e->getMessage());
+                $is_offset = false;
+            }
+        }
+
+        /** Remove companies from airtable posts which added in airtable platform */
+
+        int_art_delete_company_posts( $all_lists_ids );
+
+    }
+}
