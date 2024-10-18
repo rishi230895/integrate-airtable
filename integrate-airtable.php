@@ -41,6 +41,7 @@ if ( ! defined( 'INT_ART_TEXT_DOMAIN' ) ) {
  * This section includes all necessary files that provide the core functionality of the plugin.
  */
 require_once INT_ART_PLUGIN_PATH . 'vendor/autoload.php'; // Autoload dependencies using Composer
+require_once INT_ART_PLUGIN_PATH . 'hooks/int-art-hooks.php'; // Include hooks
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-airt.cpt.php'; // Include custom post type definitions
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-enqueue.php'; // Include scripts and styles for the plugin
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-common.php'; // Include common functions used throughout the plugin

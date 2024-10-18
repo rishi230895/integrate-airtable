@@ -2,27 +2,6 @@
 
 use GuzzleHttp\Client;
 
-/**
- * Deletes the thumbnail image and its attachment for a specific post.
- *
- * @param int $post_id The ID of the post from which to delete the thumbnail and attachment.
- */
-
-if( ! function_exists( 'int_art_delete_post_thumbnail_and_attachment' ) ) {
-    function int_art_delete_post_thumbnail_and_attachment($post_id) {
-        
-        $thumbnail_id = get_post_thumbnail_id($post_id);
-        if ($thumbnail_id) {
-            delete_post_thumbnail($post_id);
-            wp_delete_attachment($thumbnail_id, true);
-        } 
-        else {
-
-        }
-    }
-    
-}
-
 
 /**
  * Logs data to a daily debug log file.
@@ -34,7 +13,7 @@ if( ! function_exists( 'int_art_delete_post_thumbnail_and_attachment' ) ) {
  * timestamp indicating when the logging started and ended.
  */
 
-if (!function_exists('int_art_sync_log')) {
+if (! function_exists('int_art_sync_log') ) {
 
     function int_art_sync_log( $data ) {
         $datetime = new DateTime();
@@ -160,7 +139,10 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
         $api_token  = get_option('int_airtable_api_token');
 
         if ( empty($base_id) || empty($table_id) || empty($api_token) ) {
-            return __('Airtable credentials are missing.', INT_ART_TEXT_DOMAIN );
+            $message = __('Bases ID and Table ID or Name and API Token are required.', INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return; 
         }
 
         $client = new Client([
@@ -182,16 +164,14 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
 
             if ( ! isset($data['records']) || empty($data['records']) ) {
 
-                /** Update option */
+                delete_option("int_column_keys" );
+                delete_option("int_column_selected_keys");
 
-                if( get_option('int_column_keys') ) {
-                    update_option("int_column_keys", "");
-                }
-                else {
-                    add_option("int_column_keys" , "");
-                }
+                $message = __( 'No records found in the Airtable table.' , INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+                int_art_sync_log($message);
 
-                return __( 'No records found in the Airtable table.', INT_ART_TEXT_DOMAIN );
+                return;
             }
 
             $first_record = $data['records'][0]['fields'];
@@ -201,7 +181,10 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
 
         } 
         catch (Exception $e) {
-            return __('Error fetching column names: ', INT_ART_TEXT_DOMAIN) . $e->getMessage();
+            $message = __( 'Error fetching column names: ' . $e->getMessage() , INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return;
         }
     }
 }
@@ -305,9 +288,9 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
 
     function int_art_get_attachment_id( $image_url, $post_id ) {
      
-        // Validate the provided URL
         if (filter_var($image_url, FILTER_VALIDATE_URL) === false) {
-            return new WP_Error('invalid_url', 'The provided URL is not valid.');
+            $error_message = 'Title - ' . get_the_title() . ' | ' . 'Post ID - ' . $post_id . ' | ' . ' Error -  The provided URL is not valid.';  
+            return new WP_Error('invalid_url',  __( $error_message, INT_ART_TEXT_DOMAIN ) );
         }
 
         // Delete existing attachment if it exists
@@ -330,6 +313,9 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
 
         // Handle cURL errors
         if (curl_errno($ch)) {
+
+            $message = __( 'Error: image_fetch_failed - ' . json_encode(curl_error($ch)) , INT_ART_TEXT_DOMAIN  );
+            int_art_set_error_message($message);
             int_art_sync_log('Error: image_fetch_failed - ' . json_encode(curl_error($ch)));
             return new WP_Error('image_fetch_failed', curl_error($ch));
         }
@@ -341,8 +327,10 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
         // Determine the file extension
         $ext = explode('/', $content_type)[1];
         if (empty($ext)) {
+            $message = __( 'Error: invalid_content_type Unable to determine the file extension.' , INT_ART_TEXT_DOMAIN  );
+            int_art_set_error_message($message);
             int_art_sync_log('Error: invalid_content_type Unable to determine the file extension.');
-            return new WP_Error('invalid_content_type', 'Unable to determine the file extension.');
+            return new WP_Error('invalid_content_type', $message );
         }
 
         // Prepare the filename and path
@@ -357,6 +345,8 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
         // Save the image data to the specified path
         $file_saved = file_put_contents($file_path, $image_data);
         if (!$file_saved) {
+            $message = __( 'Error: file_save_failed Failed to save the image to the upload directory.' , INT_ART_TEXT_DOMAIN  );
+            int_art_set_error_message($message);
             int_art_sync_log('file_save_failed Failed to save the image to the upload directory.');
             return new WP_Error('file_save_failed', 'Failed to save the image to the upload directory.');
         }
@@ -419,7 +409,7 @@ if (!function_exists('int_art_get_admin_user_ids')) {
     }
 }
 
-add_action('init', 'int_art_get_admin_user_ids');
+add_action('admin_init', 'int_art_get_admin_user_ids');
 
 
 
@@ -449,6 +439,7 @@ if(  ! function_exists("int_art_delete_company_posts")  ) {
         ];
 
         $query = new WP_Query( $args );
+        $delete_count = 0;
 
         if ( $query->have_posts() ) {
             while ( $query->have_posts() ) {
@@ -457,10 +448,12 @@ if(  ! function_exists("int_art_delete_company_posts")  ) {
                 $air_row_id = get_post_meta( $post_id, 'int_art_column_id', true );
                 wp_delete_post( $post_id, true ); // true for permanent deletion
                 int_art_sync_log( 'Deleted post ID: ' . $post_id . ' with int_art_column_id: ' . ( $air_row_id ? $air_row_id : 'not set' ) );
+                $delete_count++;
             }
         }
 
         // Reset post data after the custom query
+
         wp_reset_postdata();
     }
 }
@@ -482,8 +475,10 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
     function int_create_new_airtable_data( $data ) {
 
         if ( ! $data ) {
+            $message = __('Error creating post Airtable: Data is empty.', INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
             int_art_sync_log('Error creating post Airtable: Data is empty - ' . json_encode($data));
-            return false;
+            return;
         }
 
         $author_ids = int_art_get_admin_user_ids();
@@ -500,7 +495,7 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
                 'post_status'   => 'publish',
                 'post_title'    => $post_title,
                 'post_author'   => $author_id,
-                'post_content'  => $post_desc
+                'post_content'  => $post_desc ? $post_desc : ''
             ];
 
             $post_id = wp_insert_post( $post_data );
@@ -508,8 +503,10 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             /** if error , log the error message */
 
             if (is_wp_error($post_id)) {
-                int_art_sync_log('Error creating post Airtable: ' . $post_id->get_error_message());
-                return false;
+                $message = __('Error creating post Airtable: ' . $post_id->get_error_message() , INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+                int_art_sync_log($message);
+                return;
             }
 
             /** Get image attachment id if image url is exist. */
@@ -547,14 +544,16 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
  if( ! function_exists( "int_update_airtable_data" )  ) {
 
     function int_update_airtable_data( $data , $post_id ) {
+
         if ( ! $data ) {
-            int_art_sync_log('Error creating post Airtable: Data is empty - ' . json_encode($data));
-            return false;
+            $message = __('Error update post Airtable: Data is empty.', INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
+            int_art_sync_log('Error update post Airtable: Data is empty - ' . json_encode($data));
+            return;
         }
 
-        $author_ids = int_art_get_admin_user_ids();
-        $author_id  = $author_ids && is_array($author_ids) ? $author_ids[0] : 1;
-
+        $author_ids         = int_art_get_admin_user_ids();
+        $author_id          = $author_ids && is_array($author_ids) ? $author_ids[0] : 1;
         $post_title         = $data['create_post']['title'];
         $post_desc          = $data['create_post']['desc'];
         $post_feature_img   = $data['create_post']['feature_img']; 
@@ -567,7 +566,7 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
                 'post_status'   => 'publish',
                 'post_title'    => $post_title,
                 'post_author'   => $author_id,
-                'post_content'  => $post_desc
+                'post_content'  =>  $post_desc ?  $post_desc : ''
             ];
 
             $post_id = wp_update_post( $post_data );
@@ -575,8 +574,10 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             /** if error , log the error message */
 
             if (is_wp_error($post_id)) {
-                int_art_sync_log('Error update post Airtable: ' . $post_id->get_error_message());
-                return false;
+                $message = __('Error update post Airtable: ' . $post_id->get_error_message() , INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message( $message );
+                int_art_sync_log('Error update post Airtable: ' . $post_id->get_error_message() );
+                return;
             }
 
             /** Remove the feature image */
@@ -642,7 +643,7 @@ if ( ! function_exists('int_art_check_post') ) {
             return $post_data;
         }
 
-        return false;
+        return;
     }
 }
 
@@ -668,7 +669,11 @@ if ( ! function_exists('int_art_check_post') ) {
         $api_token  = get_option('int_airtable_api_token');
         
         if (empty($base_id) || empty($table_id) || empty($api_token)) {
-            return __('Airtable credentials are missing.', INT_ART_TEXT_DOMAIN);
+
+            $message = __( 'Bases ID and Table ID or Name and API Token are required.' , INT_ART_TEXT_DOMAIN  );
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return;
         }
         
         $client = new Client([
@@ -677,6 +682,8 @@ if ( ! function_exists('int_art_check_post') ) {
         
         $all_records = [];
         $offset = null;
+        $post_create = 0;
+        $post_update = 0;
         
         try {
             do {
@@ -696,13 +703,22 @@ if ( ! function_exists('int_art_check_post') ) {
                 $response = $client->request('GET', "$base_id/$table_id", $query_params);
                 $data = json_decode($response->getBody(), true);
 
+
+                /**
+                 *   
+                 *  From api if no columns are fetched...
+                 * 
+                 */
+
                 if (!isset($data['records']) || empty($data['records'])) {
-                    if (get_option('int_column_keys')) {
-                        update_option("int_column_keys", "");
-                    } else {
-                        add_option("int_column_keys", "");
-                    }
-                    return __('No records found in the Airtable table.', INT_ART_TEXT_DOMAIN);
+
+                    delete_option('int_column_keys');
+                    delete_option('int_column_selected_keys');
+
+                    $message = __( 'Fields are not fetched from api.' , INT_ART_TEXT_DOMAIN  );
+                    int_art_set_error_message($message);
+
+                    return;
                 }
 
                 $all_records = array_merge($all_records, $data['records']); 
@@ -777,9 +793,11 @@ if ( ! function_exists('int_art_check_post') ) {
                             if ($post_data) {
                                 $post_id = $post_data[0]->ID;
                                 int_update_airtable_data($prepare_data, $post_id);
+                                $post_update++;
                             } 
                             else {
                                 int_create_new_airtable_data($prepare_data);
+                                $post_create++;
                             }
                         }
                     }
@@ -788,8 +806,15 @@ if ( ! function_exists('int_art_check_post') ) {
             } while ($offset);
 
         } catch (Exception $e) {
-            return __('Error fetching column names: ', INT_ART_TEXT_DOMAIN) . $e->getMessage();
+            int_art_set_error_message($e->getMessage());
+            int_art_sync_log($e->getMessage());
+            return;
         }
+
+        $message = __("Total update records - " . $post_update . " | Total new create records - " . $post_create , INT_ART_TEXT_DOMAIN);
+        int_art_set_success_message( $message);
+        int_art_sync_log( $message );
+
 
         // Optionally delete posts that no longer exist in Airtable...
 
@@ -813,6 +838,14 @@ if ( ! function_exists('int_art_check_post') ) {
         $base_id    = get_option('int_airtable_base_id');
         $table_id   = get_option('int_airtable_table_id');
         $api_token  = get_option('int_airtable_api_token');
+
+        if (empty($base_id) || empty($table_id) || empty($api_token)) {
+
+            $message = __( 'Bases ID and Table ID or Name and API Token are required.' , INT_ART_TEXT_DOMAIN  );
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return;
+        }
 
         $all_lists_ids = [];
         $total_records = 0; // Counter to track total records
@@ -838,6 +871,7 @@ if ( ! function_exists('int_art_check_post') ) {
                 ];
 
                 // If there's an offset, add it to the request
+
                 if( $offset ) {
                     $request_params['query']['offset'] = $offset;
                 }
@@ -847,8 +881,9 @@ if ( ! function_exists('int_art_check_post') ) {
                 $data = json_decode($body, true);
 
                 if( ! $data ) {
-                    int_art_sync_log('Error: Fetch List - data is empty' . json_encode($data));
-                    return false;
+                    int_art_set_error_message('Error: Fetch Columns - data is empty');
+                    int_art_sync_log('Error: Fetch Columns - data is empty.' . json_encode($data));
+                    return;
                 }
 
                 if( array_key_exists('records', $data) ) {
@@ -869,8 +904,10 @@ if ( ! function_exists('int_art_check_post') ) {
                     $is_offset = false;
                 }
 
-            } catch (GuzzleHttp\Exception\RequestException $e) {
-                int_art_sync_log($e->getMessage());
+            } 
+            catch (GuzzleHttp\Exception\RequestException $e) {
+                int_art_set_error_message($e->getMessage());
+                int_art_sync_log($e->getMessage()); 
                 $is_offset = false;
             }
         }

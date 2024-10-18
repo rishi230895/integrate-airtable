@@ -37,6 +37,18 @@ if(  ! function_exists("int_airtable_text_field_cb") ) {
 }
 
 
+
+/** Debugger method */
+
+if( ! function_exists('int_art_debugger')  ) {
+    function int_art_debugger($data) {
+        echo '<pre>';
+        var_dump($data);
+        echo '</pre>';
+    }
+}
+
+
 /** This function register credentials fields and section... */
 
 if(  ! function_exists("int_register_settings") ) {
@@ -86,10 +98,158 @@ if(  ! function_exists("int_register_settings") ) {
         );
         
         register_setting('int_airtable_group', 'int_airtable_api_token');
+
+
+
+        /**  ================ Form submission actions  ================  */
+
+
+        /**
+         *  
+         * API trigger button action
+         * 
+         */
+
+        if (isset($_POST['save_columns'])) {
+            $new_columns = [];
+
+            if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
+                foreach ($_POST['column_select'] as $key => $data) {
+                    if (isset($data['column_name'], $data['selected'])) {
+                        if ($data['selected']) {
+                            $new_columns[$key] = [
+                                'column_name' => sanitize_text_field($data['column_name']),
+                                'selected' => sanitize_text_field($data['selected']),
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            update_option('int_column_selected_keys', $new_columns); 
+
+            // Hit API to create or update the Airtable records
+
+            if (get_option('int_column_selected_keys')) {
+                if (int_check_meta_key_exists('title')) {
+                    // Fetch Airtable records from platform, insert or update the records...
+                    int_initalize_columns_fetch();
+                } else {
+                    $message = __('Please choose any one title field name to create a new Airtable record.', INT_ART_TEXT_DOMAIN);
+                    int_art_set_error_message($message);
+                    return;
+                }
+            } else {
+                $message = __('Please select fields keys.', INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+                return;
+            }
+        }
+
+
+       /** 
+        *   Credentials save action
+        *
+        */
+
+
+        if( isset( $_POST['submit'] ) ) {
+
+            $base_id        = sanitize_text_field( $_POST['int_airtable_base_id'] );
+            $access_token   = sanitize_text_field( $_POST['int_airtable_api_token'] );
+            $table_or_id    = sanitize_text_field( $_POST['int_airtable_table_id'] );
+
+            delete_option("int_column_keys" );
+            delete_option("int_column_selected_keys");
+
+            if( ! $access_token  ||  ! $base_id || ! $table_or_id ) {
+                $message = __( 'Bases ID and Table ID or Name and API Token are required.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_error_message($message);
+
+            }
+            else {
+                $message = __( 'Bases ID and Table ID or Name and API Token are saved.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_success_message($message);
+            }
+        }
+
+
+        /**
+         * 
+         *  Fetch columns names action 
+         * 
+         */
+
+
+        if ( isset($_POST['fetch_airtable_data'] ) ) {
+
+            $columns = int_fetch_airtable_column_names();
+            $columns = $columns ? $columns : [];
+
+            /** Update option */
+            
+            if( get_option('int_column_keys') ) {
+                update_option("int_column_keys", $columns );
+            }
+            else {
+                add_option("int_column_keys" , $columns);
+            }
+
+
+
+            /** Admin notice */
+
+            $column_names = get_option('int_column_keys');
+
+            if( ! $column_names ) {
+                $message = __( 'Airtable columns names are not synced.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_error_message($message);
+            }
+            else{
+                $message = __( 'Airtable columns names are synced.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_success_message($message);
+            }
+
+
+        }
+
+
+         /**
+         * 
+         *  Remove columns names action 
+         * 
+         */
+
+
+        if ( isset($_POST['remove_columns_data'] ) ) {
+
+            /** Remove columns names */
+            delete_option("int_column_keys" );
+            delete_option("int_column_selected_keys");
+
+            $column_names = get_option('int_column_keys');
+
+            /** Admin notice */
+
+            if( ! $column_names ) {
+                $message = __( 'Airtable columns names are removed.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_success_message($message);
+            }
+
+            if( $column_names ) {
+                $message = __( 'Airtable columns names are not removed.' , INT_ART_TEXT_DOMAIN  );
+                int_art_set_error_message($message);
+            }
+
+        }
+
+
+
     }
 
     add_action('admin_init', 'int_register_settings');
 }
+
 
 
 /**  This function is a callback function for admin menu section */
@@ -135,9 +295,13 @@ if( ! function_exists("int_render_admin_page") ) {
                                 <?php _e('Fetch Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
                             </button>
 
+                            <?php if( get_option('int_column_keys') ) : ?>
+
                             <button type="submit" name="remove_columns_data" class="button button-primary remove-columns">
                                 <?php _e('Remove Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
                             </button>
+
+                            <?php endif?>
                         </div>
                         
                     </form>
@@ -146,74 +310,7 @@ if( ! function_exists("int_render_admin_page") ) {
             <?php endif; ?>
 
 
-
-
-
-
             <?php 
-
-            if (isset($_POST['save_columns'])) {
-                    $new_columns = [];
-                    if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
-                        foreach ($_POST['column_select'] as $key => $data) {
-                            if (isset($data['column_name'], $data['selected'])) {
-                                if($data['selected']) {
-                                    $new_columns[$key] = [
-                                        'column_name'   => sanitize_text_field($data['column_name']),
-                                        'selected'      => sanitize_text_field($data['selected'])
-                                    ];
-                                }
-                            }
-                        }
-                    }
-                    
-                    update_option('int_column_selected_keys', $new_columns); 
-
-
-                    /** Hit api to create or update the airtable records */
-
-                    if(  get_option( 'int_column_selected_keys' )  ) {
-                        if( int_check_meta_key_exists('title') ) {
-                            /** Fetch the airtable records from platform insert or update the records... */
-                           int_initalize_columns_fetch();
-                        }                        
-                    }
-
-
-                }
-
-                /** ON button submit Fetch Airtable Columns Data */
-
-                if (isset($_POST['save_columns'])) {
-                    $new_columns = [];
-                    if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
-                        foreach ($_POST['column_select'] as $key => $data) {
-                            if (isset($data['column_name'], $data['selected'])) {
-                                if($data['selected']) {
-                                    $new_columns[$key] = [
-                                        'column_name'   => sanitize_text_field($data['column_name']),
-                                        'selected'      => sanitize_text_field($data['selected'])
-                                    ];
-                                }
-                            }
-                        }
-                    }
-                    
-                    update_option('int_column_selected_keys', $new_columns); 
-
-
-                    /** Hit api to create or update the airtable records */
-
-                    if(  get_option( 'int_column_selected_keys' )  ) {
-                        if( int_check_meta_key_exists('title') ) {
-                            /** Fetch the airtable records from platform insert or update the records... */
-                           int_initalize_columns_fetch();
-                        }                        
-                    }
-
-
-                }
-
 
                 if ( int_column_key_exists()  && int_are_airtable_credentials_saved() ) {
 
@@ -236,8 +333,6 @@ if( ! function_exists("int_render_admin_page") ) {
                             ?>
 
                             </small>
-
-                          
                                 <table class="meta-row-table">
                                     <thead>
                                         <tr>
@@ -295,40 +390,12 @@ if( ! function_exists("int_render_admin_page") ) {
                         <?php
                     }
                 }
-                
-                
-               
             ?>
         </div>
         <?php
     }   
 }
 
-/** Fetch and display column names on button click */
-
-if ( isset($_POST['fetch_airtable_data'] ) ) {
-
-    $columns = int_fetch_airtable_column_names();
-    $columns = $columns ? $columns : [];
-
-    /** Update option */
-    
-    if( get_option('int_column_keys') ) {
-        update_option("int_column_keys", $columns );
-    }
-    else {
-        add_option("int_column_keys" , $columns);
-    }
-}
-
-
-/** Fetch and display column names on button click */
-
-if ( isset($_POST['remove_columns_data'] ) ) {
-
-    delete_option("int_column_keys" );
-
-}
 
 
 /** This function register admin menu in dashboard. */
