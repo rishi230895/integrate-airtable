@@ -36,6 +36,14 @@ if ( ! defined( 'INT_ART_TEXT_DOMAIN' ) ) {
     define( 'INT_ART_TEXT_DOMAIN', 'int-airtable' );
 }
 
+if( ! defined('INT_ART_PRO_FEATURE') ) {
+    define("INT_ART_PRO_FEATURE" , "Pro feature");
+}
+
+if( ! defined('INT_ART_FIELDS_ACCESS_COUNT') ) {
+    define("INT_ART_FIELDS_ACCESS_COUNT" , 5);
+}
+
 /** 
  * Include required files for the plugin functionality 
  * This section includes all necessary files that provide the core functionality of the plugin.

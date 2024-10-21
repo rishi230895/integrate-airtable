@@ -394,14 +394,13 @@ if (!function_exists('int_art_get_admin_user_ids')) {
 
     function int_art_get_admin_user_ids()
     {
-        // Ensure WordPress is fully loaded
         if (!function_exists('get_users')) {
-            return []; // Return an empty array if get_users is not available
+            return [];
         }
 
         $args = [
             'role' => 'administrator',
-            'fields' => 'ID', // Only get user IDs
+            'fields' => 'ID',
         ];
 
         $user_ids = get_users($args);
@@ -422,18 +421,18 @@ if(  ! function_exists("int_art_delete_company_posts")  ) {
 
          $args = [
             'post_type'      => 'air-sync',
-            'posts_per_page' => -1, // Fetch all matching posts
+            'posts_per_page' => -1,
             'post_status'    => 'publish',
             'meta_query'     => [
                 'relation' => 'AND',
                 [
                     'key'     => 'int_art_column_id',
-                    'compare' => 'EXISTS', // No meta key
+                    'compare' => 'EXISTS',
                 ],
                 [
                     'key'     => 'int_art_column_id',
                     'value'   => $all_lists_ids,
-                    'compare' => 'NOT IN',     // Meta key exists but doesn't match any ID in the array
+                    'compare' => 'NOT IN',
                 ],
             ],
         ];
@@ -451,8 +450,6 @@ if(  ! function_exists("int_art_delete_company_posts")  ) {
                 $delete_count++;
             }
         }
-
-        // Reset post data after the custom query
 
         wp_reset_postdata();
     }
@@ -918,3 +915,27 @@ if ( ! function_exists('int_art_check_post') ) {
 
     }
 }
+
+
+/** Sliced extra index */
+
+if( ! function_exists("int_art_slice_columns") ) {
+    function int_art_slice_columns() {
+        $columns = get_option("int_column_selected_keys");
+        if( $columns ) {
+            if( is_array( $columns) ) {
+                if( count( $columns ) > INT_ART_FIELDS_ACCESS_COUNT ) {
+                    $temp = [];
+                    $counter = 0;
+                    foreach(  $columns as $col ) {
+                        if( $counter > INT_ART_FIELDS_ACCESS_COUNT ) break; 
+                        $temp[] = $col;
+                        $counter++;
+                    }
+                    update_option( "int_column_selected_keys", $temp );
+                }
+            }
+        }
+    }
+}
+

@@ -244,6 +244,10 @@ if(  ! function_exists("int_register_settings") ) {
         }
 
 
+        /** For free version allow only limited keys stored. */
+
+        int_art_slice_columns();
+
 
     }
 
@@ -317,6 +321,9 @@ if( ! function_exists("int_render_admin_page") ) {
                     $columns_keys = get_option("int_column_keys");
                     $saved_columns = get_option('int_column_selected_keys', []);
                     $saved_columns = $saved_columns ? $saved_columns : [];
+
+                    // int_art_debugger($saved_columns);
+
                 
                     if ( $columns_keys && is_array($columns_keys) && count($columns_keys) > 0) {
                         ?>
@@ -341,7 +348,10 @@ if( ! function_exists("int_render_admin_page") ) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($columns_keys as $key => $col) { 
+                                        <?php 
+                                            $counter = 0;
+                                            foreach ($columns_keys as $key => $col) { 
+                                            $counter++;
                                             $selected_value = isset($saved_columns[$key]['selected']) ? $saved_columns[$key]['selected'] : ''; 
                                         ?>
                                         <tr id="<?php echo 'int_meta_row-' . $key; ?>">
@@ -354,22 +364,26 @@ if( ! function_exists("int_render_admin_page") ) {
                                             
                                             <!-- Select Option -->
                                             <td>
-                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select">
+                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select" <?php echo $counter > INT_ART_FIELDS_ACCESS_COUNT ? "disabled" : ""; ?> >
                                                     <option value="">
-                                                        <?php echo __( "Select field key" , INT_ART_TEXT_DOMAIN ); ?>
+                                                        <?php 
+                                                            $message = $counter <= INT_ART_FIELDS_ACCESS_COUNT ? 'Select field key' : INT_ART_PRO_FEATURE;
+                                                            echo __(  $message , INT_ART_TEXT_DOMAIN ); ?>
                                                     </option>
-                                                    <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
-                                                        <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
+                                                    <?php if( $counter <= INT_ART_FIELDS_ACCESS_COUNT ) {   ?>
+                                                        <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
+                                                            <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                    <?php } ?>
                                                 </select>
                                             </td> 
                                             
