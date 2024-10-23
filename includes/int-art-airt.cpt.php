@@ -80,31 +80,6 @@ if( ! function_exists("int_register_air_sync_cpt") ) {
 
    
         register_post_type('air-sync', $args);
-
-        $taxonomy_labels = array(
-            'name'              => _x('Categories', 'taxonomy general name', INT_ART_TEXT_DOMAIN),
-            'singular_name'     => _x('Category', 'taxonomy singular name', INT_ART_TEXT_DOMAIN),
-            'search_items'      => __('Search Categories', INT_ART_TEXT_DOMAIN),
-            'all_items'         => __('All Categories', INT_ART_TEXT_DOMAIN),
-            'parent_item'       => __('Parent Category', INT_ART_TEXT_DOMAIN),
-            'parent_item_colon' => __('Parent Category:', INT_ART_TEXT_DOMAIN),
-            'edit_item'         => __('Edit Category', INT_ART_TEXT_DOMAIN),
-            'update_item'       => __('Update Category', INT_ART_TEXT_DOMAIN),
-            'add_new_item'      => __('Add New Category', INT_ART_TEXT_DOMAIN),
-            'new_item_name'     => __('New Category Name', INT_ART_TEXT_DOMAIN),
-            'menu_name'         => __('Categories', INT_ART_TEXT_DOMAIN),
-        );
-
-        $taxonomy_args = array(
-            'hierarchical'      => true,
-            'labels'            => $taxonomy_labels,
-            'show_ui'           => true,
-            'show_admin_column' => true,
-            'query_var'         => true,
-            'rewrite'           => array('slug' => 'air-sync-category'),
-        );
-
-        register_taxonomy('air-sync-category', array('air-sync'), $taxonomy_args);
     }
 
     add_action('init', 'int_register_air_sync_cpt');
