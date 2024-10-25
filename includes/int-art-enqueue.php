@@ -17,3 +17,14 @@ if( ! function_exists('int_enqueue_admins_externals') ) {
     }
     add_action( 'admin_enqueue_scripts', 'int_enqueue_admins_externals' );
 }
+
+
+if( ! function_exists('int_enqueue_externals') ) {
+    
+    function int_enqueue_externals() {
+        wp_enqueue_style( 'int-art-datatable-style', INT_ART_PLUGIN_URL . 'assets/public/css/datatable.min.css', array(), time() , false );
+        wp_enqueue_script( 'int-art-datatable-script', INT_ART_PLUGIN_URL . 'assets/public/js/datatable.min.js', array('jquery'), time(), false );
+        wp_enqueue_script( 'int-art-main-script', INT_ART_PLUGIN_URL . 'assets/public/js/main.script.js', array(), time(), true );
+    }
+    add_action( 'wp_enqueue_scripts', 'int_enqueue_externals' );
+}

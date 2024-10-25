@@ -939,3 +939,30 @@ if( ! function_exists("int_art_slice_columns") ) {
     }
 }
 
+
+/** Fetch all distinct meta keys */
+
+if( ! function_exists('int_art_get_meta_keys') ) {
+    function int_art_get_meta_keys($prefix = 'int_art_') {
+        global $wpdb;
+        $meta_keys = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT meta_key FROM {$wpdb->postmeta} WHERE meta_key LIKE %s",
+                $wpdb->esc_like($prefix) . '%'
+            )
+        );
+        return $meta_keys;
+    }
+}
+
+/** Split meta key in original column */
+
+if( ! function_exists("int_art_split_meta_key") ) {
+    function int_art_split_meta_key($meta_key) {
+        if( ! $meta_key ) return 0;
+        $meta_key = str_replace("int_art_", "", $meta_key);
+        $exploded = explode( "_" , $meta_key );
+        $imploded = implode(" " , $exploded );
+        return ucwords( $imploded );
+    }
+}

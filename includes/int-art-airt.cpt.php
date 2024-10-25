@@ -101,7 +101,7 @@ if( ! function_exists("int_register_air_sync_cpt") ) {
             'show_ui'           => true,
             'show_admin_column' => true,
             'query_var'         => true,
-            'rewrite'           => array('slug' => 'air-sync-category'),
+            'rewrite'           => array('slug' => 'air-sync-cat'),
         );
 
         register_taxonomy('air-sync-category', array('air-sync'), $taxonomy_args);

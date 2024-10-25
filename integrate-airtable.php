@@ -36,13 +36,6 @@ if ( ! defined( 'INT_ART_TEXT_DOMAIN' ) ) {
     define( 'INT_ART_TEXT_DOMAIN', 'int-airtable' );
 }
 
-if( ! defined('INT_ART_PRO_FEATURE') ) {
-    define("INT_ART_PRO_FEATURE" , "Pro feature");
-}
-
-if( ! defined('INT_ART_FIELDS_ACCESS_COUNT') ) {
-    define("INT_ART_FIELDS_ACCESS_COUNT" , 5);
-}
 
 /** 
  * Include required files for the plugin functionality 
@@ -54,6 +47,7 @@ require_once INT_ART_PLUGIN_PATH . 'includes/int-art-airt.cpt.php'; // Include c
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-enqueue.php'; // Include scripts and styles for the plugin
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-common.php'; // Include common functions used throughout the plugin
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-menu.php'; // Include menu definitions for the plugin settings page
+require_once INT_ART_PLUGIN_PATH . 'includes/int-art-shortcode.php'; // Include menu definitions for the plugin settings page
 
 /** 
  * Define plugin activation function 

@@ -243,12 +243,6 @@ if(  ! function_exists("int_register_settings") ) {
 
         }
 
-
-        /** For free version allow only limited keys stored. */
-
-        int_art_slice_columns();
-
-
     }
 
     add_action('admin_init', 'int_register_settings');
@@ -349,9 +343,7 @@ if( ! function_exists("int_render_admin_page") ) {
                                     </thead>
                                     <tbody>
                                         <?php 
-                                            $counter = 0;
                                             foreach ($columns_keys as $key => $col) { 
-                                            $counter++;
                                             $selected_value = isset($saved_columns[$key]['selected']) ? $saved_columns[$key]['selected'] : ''; 
                                         ?>
                                         <tr id="<?php echo 'int_meta_row-' . $key; ?>">
@@ -364,26 +356,27 @@ if( ! function_exists("int_render_admin_page") ) {
                                             
                                             <!-- Select Option -->
                                             <td>
-                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select" <?php echo $counter > INT_ART_FIELDS_ACCESS_COUNT ? "disabled" : ""; ?> >
+                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select" >
                                                     <option value="">
                                                         <?php 
-                                                            $message = $counter <= INT_ART_FIELDS_ACCESS_COUNT ? 'Select field key' : INT_ART_PRO_FEATURE;
+                                                            $message = 'Select field key';
                                                             echo __(  $message , INT_ART_TEXT_DOMAIN ); ?>
                                                     </option>
-                                                    <?php if( $counter <= INT_ART_FIELDS_ACCESS_COUNT ) {   ?>
-                                                        <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
-                                                            <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
-                                                        </option>
-                                                        <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
-                                                            <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
-                                                        </option>
-                                                        <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
-                                                            <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
-                                                        </option>
-                                                        <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
-                                                            <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
-                                                        </option>
-                                                    <?php } ?>
+                                                    <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
+                                                        <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
+                                                    <option value="taxonomy" <?php echo ($selected_value === 'taxonomy') ? 'selected' : ''; ?>>
+                                                        <?php echo __("Taxonomy" , INT_ART_TEXT_DOMAIN); ?>
+                                                    </option>
                                                 </select>
                                             </td> 
                                             
@@ -414,8 +407,9 @@ if( ! function_exists("int_render_admin_page") ) {
 
 /** This function register admin menu in dashboard. */
 
-if(  ! function_exists("int_add_admin_menu")  ) {
+if( ! function_exists("int_add_admin_menu") ) {
     function int_add_admin_menu() {
+        // Add a top-level menu page
         add_menu_page(
             __('Airtable Integration', INT_ART_TEXT_DOMAIN),
             __('Airtable Integration', INT_ART_TEXT_DOMAIN),
@@ -423,6 +417,54 @@ if(  ! function_exists("int_add_admin_menu")  ) {
             'int_airtable_settings',
             'int_render_admin_page'
         );
+
+        // Add a submenu under the Airtable Integration menu
+        add_submenu_page(
+            'int_airtable_settings',
+            __('Developer Guide', INT_ART_TEXT_DOMAIN),
+            __('Developer Guide', INT_ART_TEXT_DOMAIN),
+            'manage_options',
+            'int_airtable_developer_guide',
+            'int_render_deveoper_page'
+        );
     }
     add_action('admin_menu', 'int_add_admin_menu');
 }
+
+// Render the submenu page
+
+if( ! function_exists('int_render_deveoper_page') ) {
+    function int_render_deveoper_page() {
+        $shortcodes = [
+            '[int_art_get_meta_data_table]',
+            '[int_art_get_meta_data_table meta_field="column_name , column_name"]',
+            '[int_art_get_meta_value meta_field="column name" post_id="post_id"]'
+        ];
+    ?>
+        <div class="wrap">
+            <h2 class="top-title"><?php echo __("Developer Guide"); ?></h2>
+            <div class="shortcode-card">
+                <h2><?php echo __("Shortcodes" ,  INT_ART_TEXT_DOMAIN );  ?></h2>
+                <p class="note">
+                    <?php echo __('Please click the "Copy" button next to the shortcode to copy it. You can use this shortcode in any editor or code, but be sure to provide valid attributes.' , INT_ART_TEXT_DOMAIN ); ?>
+                </p>
+                <?php 
+                    foreach($shortcodes as $index => $shortcode) {  
+                ?>
+                    <div class="shortcode-item">
+                        <input type="text" id="shortcode-<?php echo $index; ?>" value="<?php echo esc_html($shortcode); ?>" readonly />
+                        <button type="button" class="copy-btn" data-target="<?php echo esc_html($shortcode); ?>">
+                            <?php echo __('Copy shortcode'); ?>
+                        </button>
+                    </div>
+                <?php }  ?>
+            </div>
+        </div>
+    <?php
+    }
+}
+
+
+
+
+

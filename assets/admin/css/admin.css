@@ -93,3 +93,51 @@
 .setting-desc{
   margin-bottom: 30px;
 }
+
+
+/* Developer CSS */
+
+.shortcode-card {
+  background-color: #f9f9f9; /* Card background color */
+  border: 1px solid #ddd; /* Card border */
+  border-radius: 8px; /* Rounded corners */
+  padding: 20px; /* Padding inside the card */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Optional shadow for depth */
+}
+
+.shortcode-item {
+  display: flex; /* Flexbox for input and button */
+  margin-bottom: 15px; /* Space between each shortcode item */
+}
+
+.shortcode-item input {
+  flex: 1; /* Input takes all available space */
+  padding: 10px; /* Padding inside the input */
+  border: 1px solid #ccc; /* Input border */
+  border-radius: 4px; /* Rounded corners */
+  margin-right: 10px; /* Space between input and button */
+}
+
+.shortcode-item button {
+  background-color: #0073aa; /* Button color */
+  color: white; /* Text color */
+  border: none; /* No border */
+  border-radius: 4px; /* Rounded corners */
+  padding: 10px 15px; /* Padding inside the button */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.3s; /* Smooth transition */
+}
+
+.shortcode-item button:hover {
+  background-color: #005177; /* Darker shade on hover */
+}
+
+.top-title {
+  margin-bottom: 32px !important;
+}
+
+.shortcode-note {
+  font-size: 12px; /* Adjust the font size as needed */
+  color: #666; /* Change the color as needed */
+  margin-top: 5px; /* Add some space above the note */
+}
