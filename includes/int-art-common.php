@@ -14,7 +14,6 @@ use GuzzleHttp\Client;
  */
 
 if (! function_exists('int_art_sync_log') ) {
-
     function int_art_sync_log( $data ) {
         $datetime = new DateTime();
         $current_date = $datetime->format('d_m_Y');
@@ -54,6 +53,26 @@ if( ! function_exists( 'int_separate_underscore' ) ) {
         return strtolower(str_replace(" ", "_", $str));
     }
 }
+
+
+/**
+ * Outputs the given data in a <pre> block using var_dump.
+ *
+ * This function is useful for debugging purposes.
+ *
+ * @param mixed $data The data to be output.
+ */
+
+
+if( ! function_exists('int_art_debugger')  ) {
+
+    function int_art_debugger($data) {
+        echo '<pre>';
+        var_dump($data);
+        echo '</pre>';
+    }
+}
+
 
 /**
  * Checks if meta fields for Airtable columns have been added.
@@ -106,15 +125,11 @@ if ( ! function_exists('int_sync_sanatize_string') ) {
  */
 
 if( ! function_exists("int_are_airtable_credentials_saved") ) {
-
     function int_are_airtable_credentials_saved() {
-
         $base_id    = get_option('int_airtable_base_id');
         $table_id   = get_option('int_airtable_table_id');
         $api_token  = get_option('int_airtable_api_token');
-
         return !empty($base_id) && !empty($table_id) && !empty($api_token);
-
     }
 }
 
@@ -127,9 +142,9 @@ if( ! function_exists("int_are_airtable_credentials_saved") ) {
  *
  * This function checks if the Airtable credentials (Base ID, Table ID, API Token) 
  * are saved. If credentials are valid, it makes a GET request to the Airtable API 
- * to fetch the first record and extract the column names (field names).
+ * to fetch the first record and extract the column names (field names). If there is an
+ * issue fetching the column names, it sets an error message and logs it.
  */
-
 
 if( ! function_exists("int_fetch_airtable_column_names") ) {
     function int_fetch_airtable_column_names() {
@@ -195,7 +210,7 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
  *
  * @return bool Returns true (1) if column keys exist in the WordPress options table,
  *              false (0) otherwise.
- * 
+ *
  * This function verifies whether the 'int_column_keys' option is set, which indicates
  * that columns have been fetched and saved from Airtable.
  */
@@ -218,7 +233,6 @@ if( ! function_exists( "int_column_key_exists" ) ) {
  */
 
 if( ! function_exists( 'int_check_meta_key_exists' ) ) {
-
     function int_check_meta_key_exists( $meta_key ) {
         $meta_data = get_option( 'int_column_selected_keys' );
 
@@ -247,6 +261,7 @@ if( ! function_exists( 'int_check_meta_key_exists' ) ) {
 
 
 if( ! function_exists('int_art_remove_special_chars') ) {
+
     function int_art_remove_special_chars($inputString) {
         $outputString = preg_replace('/[^A-Za-z0-9_]/', '', $inputString);
         return $outputString;
@@ -285,7 +300,6 @@ if( ! function_exists('int_art_connect_underscore') ) {
 
 
 if ( ! function_exists('int_art_get_attachment_id') ) {
-
     function int_art_get_attachment_id( $image_url, $post_id ) {
      
         if (filter_var($image_url, FILTER_VALIDATE_URL) === false) {
@@ -390,7 +404,7 @@ if ( ! function_exists('int_art_get_attachment_id') ) {
  */
 
 
-if (!function_exists('int_art_get_admin_user_ids')) {
+if ( ! function_exists('int_art_get_admin_user_ids') ) {
 
     function int_art_get_admin_user_ids()
     {
@@ -406,17 +420,26 @@ if (!function_exists('int_art_get_admin_user_ids')) {
         $user_ids = get_users($args);
         return $user_ids;
     }
+    add_action('admin_init', 'int_art_get_admin_user_ids');
 }
 
-add_action('admin_init', 'int_art_get_admin_user_ids');
 
 
 
-/** Delete posts which is not present in airtable  */
 
 
+/**
+ * Deletes posts from the 'air-sync' post type that are not present in the provided list of IDs.
+ *
+ * This function queries all published posts of the 'air-sync' type that have a meta key
+ * 'int_art_column_id' but whose values are not in the given array of `$all_lists_ids`.
+ * It permanently deletes each of these posts and logs the deletion along with their IDs
+ * and the associated 'int_art_column_id' meta value.
+ *
+ * @param array $all_lists_ids An array of IDs to be retained. Posts with 'int_art_column_id'
+ *                             not in this list will be deleted.
+ */
 if(  ! function_exists("int_art_delete_company_posts")  ) {
-
     function int_art_delete_company_posts( $all_lists_ids ) {
 
          $args = [
@@ -484,6 +507,8 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
         $post_title         = $data['create_post']['title'];
         $post_desc          = $data['create_post']['desc'];
         $post_feature_img   = $data['create_post']['feature_img'];
+        $taxonomy_keys      = int_art_fetch_taxonomy_keys();
+
 
         if( $post_title ) {
             
@@ -515,13 +540,14 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             /** Add meta field */
 
             if( is_array($data)) {
-                foreach($data as $key => $value) {
+                foreach( $data as $key => $value) {
                     if( $key != 'create_post' ) {
                         $meta_key = int_sync_sanatize_string($key);
                         update_post_meta( $post_id , $meta_key , $value );
                     }
                 }
             }
+
 
             int_art_sync_log('Post created:  Post ID - ' . $post_id);
 
@@ -534,12 +560,17 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
 
 
 /**
- * @return void  
- * Update airtable columns posts  
+ * Update post data in WordPress based on the Airtable data.
+ *
+ * If the data is empty, it will log an error message and return.
+ *
+ * @param array $data The data from Airtable.
+ * @param int $post_id The ID of the WordPress post to update.
+ *
+ * @return void
  */
 
  if( ! function_exists( "int_update_airtable_data" )  ) {
-
     function int_update_airtable_data( $data , $post_id ) {
 
         if ( ! $data ) {
@@ -611,7 +642,7 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
  }
 
 
- /** 
+/** 
  * Check if a post exists with the specified meta key and value.
  *
  * @param string $meta_key The meta key to search for.
@@ -645,20 +676,17 @@ if ( ! function_exists('int_art_check_post') ) {
 }
 
 
-/** 
- * Function to fetch all column names from an Airtable table 
- * and handle pagination with offset. 
- * 
- * It retrieves the base ID, table ID, and API token from the 
- * options table, checks for their validity, and then makes 
- * requests to the Airtable API to fetch records in batches. 
- * The function processes the records to extract necessary 
- * column data and updates or creates posts in WordPress 
- * based on the fetched data.
+/**
+ * Fetches all column names from an Airtable table and handles pagination with offset.
+ *
+ * It retrieves the base ID, table ID, and API token from the options table, checks for their validity,
+ * and then makes requests to the Airtable API to fetch records in batches. The function processes the records
+ * to extract necessary column data and updates or creates posts in WordPress based on the fetched data.
+ *
+ * @return void
  */
 
- if (!function_exists("int_initalize_columns_fetch")) {
-
+if (!function_exists("int_initalize_columns_fetch")) {
     function int_initalize_columns_fetch() {
 
         $base_id    = get_option('int_airtable_base_id');
@@ -767,13 +795,33 @@ if ( ! function_exists('int_art_check_post') ) {
                             if ($created_time) {
                                 $prepare_data['Created Time'] = $created_time;
                             }
+
                             if (!empty($meta_field_columns_name)) {
                                 foreach ($meta_field_columns_name as $col_name) {
                                     $prepare_data[$col_name] = $field_data[$col_name] ?? '';  // Use default empty value if not found
                                 }
                             }
 
-                            // Prepare post creation array
+
+                            
+
+                            /** Add terms to the taxonomy */
+
+                            if( is_array($taxonomy_keys) && !empty($taxonomy_keys) ) {
+                                foreach($taxonomy_keys as $key => $taxonomy_name) {
+                                    $taxonomy_name = sanitize_text_field($taxonomy_name);
+                                    $taxonomy_slug = int_art_split_into_hypens($taxonomy_slug);
+                                    if ( taxonomy_exists( $taxonomy_slug ) ) {
+                                        
+                                    }
+                                }
+                            }
+
+
+
+
+
+
                             $post_creation = [
                                 'id'            => $id,
                                 'title'         => $title,
@@ -783,7 +831,6 @@ if ( ! function_exists('int_art_check_post') ) {
 
                             $prepare_data['create_post'] = $post_creation;
 
-                            // Check if post exists and update or create new
 
                             $post_data = int_art_check_post('int_art_column_id', $id);
 
@@ -820,14 +867,17 @@ if ( ! function_exists('int_art_check_post') ) {
 }
 
 
- /** 
-  *   Delete airtable data
-  */
+/**
+ * This function synchronizes companies from airtable to wordpress posts.
+ * It fetches all records from airtable, loops through each record, creates or updates
+ * a post with the same id, title, description, and feature image. It also sets the
+ * post meta with the column names and respective values. After all records are processed,
+ * it removes companies from airtable posts which added in airtable platform.
+ *
+ * @return void
+ */
 
-
-
-  if( ! function_exists("int_art_synchronization_companies") ) {
-
+if( ! function_exists("int_art_synchronization_companies") ) {
     function int_art_synchronization_companies() {
 
         set_time_limit(0);
@@ -917,7 +967,15 @@ if ( ! function_exists('int_art_check_post') ) {
 }
 
 
-/** Sliced extra index */
+/**
+ * Slice the columns array stored in the "int_column_selected_keys" option down to the maximum number of columns that can be accessed.
+ * This is necessary because the Airtable API limits the number of fields that can be accessed in a single request, and we need to make sure that we don't exceed that limit.
+ *
+ * The function first checks if the "int_column_selected_keys" option exists and if it is an array.
+ * If it does, it checks if the count of the array exceeds the maximum number of columns that can be accessed.
+ * If it does, it loops through the array and adds only the first INT_ART_FIELDS_ACCESS_COUNT columns to a temporary array.
+ * Finally, it updates the "int_column_selected_keys" option with the temporary array.
+ */
 
 if( ! function_exists("int_art_slice_columns") ) {
     function int_art_slice_columns() {
@@ -940,7 +998,12 @@ if( ! function_exists("int_art_slice_columns") ) {
 }
 
 
-/** Fetch all distinct meta keys */
+/**
+ * Retrieves all distinct meta keys from the WordPress database that match a given prefix.
+ *
+ * @param string $prefix The prefix to search for in the meta keys.
+ * @return array An array of distinct meta keys that match the given prefix.
+ */
 
 if( ! function_exists('int_art_get_meta_keys') ) {
     function int_art_get_meta_keys($prefix = 'int_art_') {
@@ -955,7 +1018,16 @@ if( ! function_exists('int_art_get_meta_keys') ) {
     }
 }
 
-/** Split meta key in original column */
+
+/**
+ * Splits a meta key string by underscores after removing a specific prefix and capitalizes each word.
+ *
+ * This function takes a meta key, removes the 'int_art_' prefix, splits the remaining string by underscores,
+ * and then returns the resulting words as a single string with each word capitalized.
+ *
+ * @param string $meta_key The meta key to be transformed.
+ * @return string Returns the transformed string with capitalized words, or 0 if the input meta key is empty.
+ */
 
 if( ! function_exists("int_art_split_meta_key") ) {
     function int_art_split_meta_key($meta_key) {
@@ -966,3 +1038,116 @@ if( ! function_exists("int_art_split_meta_key") ) {
         return ucwords( $imploded );
     }
 }
+
+
+/**
+ * Fetches taxonomy column names from saved columns in the option table.
+ *
+ * Retrieves the saved column names from the 'int_column_selected_keys' option, loops through the array to find the taxonomy column names, and returns them in an array.
+ *
+ * @return array An array of taxonomy column names.
+ */
+
+ if( ! function_exists('int_art_fetch_taxonomy_keys') ) {
+    function int_art_fetch_taxonomy_keys() {
+
+        $taxonomies = [];
+        $columns_names  = get_option("int_column_selected_keys");
+        $columns_names  = $columns_names ? $columns_names : [];
+
+        if( $columns_names && is_array( $columns_names ) ) {
+
+            foreach( $columns_names as $col ) {
+                if( $col['selected'] == 'taxonomy' ) {
+                    $taxonomies[] = $col['column_name'];
+                }
+            }
+        }
+
+        return $taxonomies;
+    }
+}
+
+
+
+
+/**
+ * Registers dynamic taxonomies based on the column names that are selected as taxonomies in the Airtable integration settings.
+ *
+ * This function registers a taxonomy for each column name that is selected as a taxonomy in the Airtable integration settings.
+ * The taxonomy name is the column name with spaces and special characters replaced, and the taxonomy slug is the taxonomy name
+ * with spaces and special characters replaced and converted to lowercase.
+ *
+ * @since 1.0.0
+ */
+
+ 
+if( ! function_exists("int_art_register_taxonomy") ) {
+    function int_art_register_taxonomy() {
+
+        $taxonomies = int_art_fetch_taxonomy_keys();
+        
+        if( $taxonomies  ) {
+
+            foreach( $taxonomies as $taxonomy_name ) {
+
+                $taxonomy_name = sanitize_text_field($taxonomy_name);
+                $taxonomy_name = ucwords($taxonomy_name);
+
+                $taxonomy_slug = sanitize_title($taxonomy_name);
+                $taxonomy_slug = int_art_split_into_hypens( $taxonomy_slug );
+
+                if ( ! taxonomy_exists($taxonomy_slug) ) {
+
+                    // Prepare labels
+                    $taxonomy_labels = array(
+                        'name'              => sprintf( _x('%s Categories', 'taxonomy general name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'singular_name'     => sprintf( _x('%s Category', 'taxonomy singular name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'search_items'      => sprintf( __('Search %s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'all_items'         => sprintf( __('All %s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'parent_item'       => sprintf( __('Parent %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'parent_item_colon' => sprintf( __('Parent %s Category:', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'edit_item'         => sprintf( __('Edit %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'update_item'       => sprintf( __('Update %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'add_new_item'      => sprintf( __('Add New %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'new_item_name'     => sprintf( __('New %s Category Name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                        'menu_name'         => sprintf( __('%s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
+                    );
+
+                    // Prepare args for the taxonomy
+                    $taxonomy_args = array(
+                        'hierarchical'      => true,
+                        'labels'            => $taxonomy_labels,
+                        'show_ui'           => true,
+                        'show_admin_column' => true,
+                        'query_var'         => true,
+                        'rewrite'           => array( 'slug' => $taxonomy_slug ),
+                    );
+
+                    // Register the dynamic taxonomy
+                    register_taxonomy( $taxonomy_slug, array( 'air-sync' ), $taxonomy_args );
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Converts a string to lowercase, splits it by spaces, and joins the words with hyphens.
+ *
+ * @param string $str The input string to be transformed.
+ * 
+ * @return string The transformed string with words joined by hyphens, or an empty string if input is empty.
+ */
+
+if( ! function_exists('int_art_split_into_hypens') ) {
+    function int_art_split_into_hypens($str) {
+        if(! $str ) return '';
+        $str = strtolower($str);
+        $words = explode(' ', $str);
+        return implode('-', $words);    
+    }   
+}   
+
+
+// int_art_debugger(int_art_fetch_taxonomy_keys());

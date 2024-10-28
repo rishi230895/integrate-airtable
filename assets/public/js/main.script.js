@@ -1,1 +1,2 @@
+/** Initailize Datatable  */
 jQuery('#int_art_data_table').DataTable();

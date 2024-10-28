@@ -13,7 +13,15 @@ use GuzzleHttp\Client;
  */
 
 
-/** Callback function for credentials section main heading... */
+/**
+ * Callback function to render the heading for the Airtable credentials section in the settings page.
+ *
+ * This function renders a small note that informs users that they need to enter all Airtable credentials
+ * provided below. If any field is missing, they will not be able to access the <b>Sync Airtable Columns Names</b>
+ * section or the <b>Column Field Mapping with API</b> section.
+ *
+ * @return void
+ */
 
 if( ! function_exists("int_airtable_credentials_section_cb")   ) {
     function int_airtable_credentials_section_cb() {
@@ -22,7 +30,17 @@ if( ! function_exists("int_airtable_credentials_section_cb")   ) {
 }
 
 
-/** Callback function to add text fields */
+/**
+ * Renders a text field for Airtable credentials settings.
+ *
+ * This function renders a text input field for a given option name.
+ * The value of the field is retrieved from the WordPress options table.
+ * The field is given a class of "cred-field" for styling purposes.
+ *
+ * @param array $args The arguments to be used for rendering the field.
+ *                      The array should contain a 'label_for' key
+ *                      that corresponds to the option name.
+ */
 
 if(  ! function_exists("int_airtable_text_field_cb") ) {
     function int_airtable_text_field_cb($args) {
@@ -37,22 +55,20 @@ if(  ! function_exists("int_airtable_text_field_cb") ) {
 }
 
 
-
-/** Debugger method */
-
-if( ! function_exists('int_art_debugger')  ) {
-    function int_art_debugger($data) {
-        echo '<pre>';
-        var_dump($data);
-        echo '</pre>';
-    }
-}
-
-
-/** This function register credentials fields and section... */
+/**
+ * Registers settings for Airtable integration in WordPress.
+ *
+ * This function sets up the settings sections and fields for Airtable credentials,
+ * including the Base ID, Table ID or Name, and API Token. It provides callbacks for
+ * rendering input fields and handles form submission actions to save credentials,
+ * synchronize column names, and manage meta field mapping. Additionally, it handles
+ * the creation and update of Airtable records based on selected fields and ensures
+ * that the necessary options are updated or deleted as required.
+ *
+ * @return void
+ */
 
 if(  ! function_exists("int_register_settings") ) {
-
     function int_register_settings() {
 
         /** Credentials section */
@@ -101,57 +117,10 @@ if(  ! function_exists("int_register_settings") ) {
 
 
 
-        /**  ================ Form submission actions  ================  */
+        /**  ============================== Form submission actions START ==============================   */
 
 
-        /**
-         *  
-         * API trigger button action
-         * 
-         */
-
-        if (isset($_POST['save_columns'])) {
-            $new_columns = [];
-
-            if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
-                foreach ($_POST['column_select'] as $key => $data) {
-                    if (isset($data['column_name'], $data['selected'])) {
-                        if ($data['selected']) {
-                            $new_columns[$key] = [
-                                'column_name' => sanitize_text_field($data['column_name']),
-                                'selected' => sanitize_text_field($data['selected']),
-                            ];
-                        }
-                    }
-                }
-            }
-            
-            update_option('int_column_selected_keys', $new_columns); 
-
-            // Hit API to create or update the Airtable records
-
-            if (get_option('int_column_selected_keys')) {
-                if (int_check_meta_key_exists('title')) {
-                    // Fetch Airtable records from platform, insert or update the records...
-                    int_initalize_columns_fetch();
-                } else {
-                    $message = __('Please choose any one title field name to create a new Airtable record.', INT_ART_TEXT_DOMAIN);
-                    int_art_set_error_message($message);
-                    return;
-                }
-            } else {
-                $message = __('Please select fields keys.', INT_ART_TEXT_DOMAIN);
-                int_art_set_error_message($message);
-                return;
-            }
-        }
-
-
-       /** 
-        *   Credentials save action
-        *
-        */
-
+        /** Save Airtable Credentials on ( Save Column ) button click */
 
         if( isset( $_POST['submit'] ) ) {
 
@@ -174,12 +143,7 @@ if(  ! function_exists("int_register_settings") ) {
         }
 
 
-        /**
-         * 
-         *  Fetch columns names action 
-         * 
-         */
-
+        /** Fetch airtable Columns names on ( Fetch airtable columns ) button click */
 
         if ( isset($_POST['fetch_airtable_data'] ) ) {
 
@@ -196,9 +160,6 @@ if(  ! function_exists("int_register_settings") ) {
             }
 
 
-
-            /** Admin notice */
-
             $column_names = get_option('int_column_keys');
 
             if( ! $column_names ) {
@@ -213,13 +174,7 @@ if(  ! function_exists("int_register_settings") ) {
 
         }
 
-
-         /**
-         * 
-         *  Remove columns names action 
-         * 
-         */
-
+        /** Remove airtable Columns names from options table on ( Remove Airtable Column Data ) button click */
 
         if ( isset($_POST['remove_columns_data'] ) ) {
 
@@ -241,7 +196,68 @@ if(  ! function_exists("int_register_settings") ) {
                 int_art_set_error_message($message);
             }
 
+
+            header("Refresh:0");
+            exit;
         }
+
+
+        /** Save Mapped fields with columns name in options table n ( Save Field Mapping ) button click */
+
+        if (isset($_POST['save_columns'])) {
+            
+            $new_columns = [];
+
+            if (isset($_POST['column_select']) && is_array($_POST['column_select'])) {
+                foreach ($_POST['column_select'] as $key => $data) {
+                    if (isset($data['column_name'], $data['selected'])) {
+                        if ($data['selected']) {
+                            $new_columns[$key] = [
+                                'column_name' => sanitize_text_field($data['column_name']),
+                                'selected' => sanitize_text_field($data['selected']),
+                            ];
+                        }
+                    }
+                }
+            }
+            
+            update_option('int_column_selected_keys', $new_columns); 
+
+            if( ! get_option('int_column_selected_keys') ) {
+                $message = __('Please select field keys.', INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+            }   
+            else {
+                $message = __('Meta fields are mapped successfully.', INT_ART_TEXT_DOMAIN);
+                int_art_set_success_message($message);
+            }
+          
+            header("Refresh:0");
+            exit;
+            
+        }
+
+
+        /** Fetch records from Airtable ( Create or update records ) button click */
+
+        if( isset( $_POST['create_post'] ) ) {
+            if (get_option('int_column_selected_keys')) {
+                if (int_check_meta_key_exists('title')) {
+                    int_initalize_columns_fetch();
+                } else {
+                    $message = __('Please choose any one title field name to create a new Airtable record.', INT_ART_TEXT_DOMAIN);
+                    int_art_set_error_message($message);
+                    return;
+                }
+            } else {
+                $message = __('Please select fields keys.', INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+                return;
+            }
+        }
+
+
+        /**  ============================== Form submission actions END ==============================   */
 
     }
 
@@ -250,10 +266,22 @@ if(  ! function_exists("int_register_settings") ) {
 
 
 
-/**  This function is a callback function for admin menu section */
+
+/**
+ * Renders the Airtable Integration Settings page in the WordPress admin.
+ *
+ * This function generates the HTML for the admin settings page, which includes sections for
+ * entering Airtable credentials, fetching column names from Airtable, and mapping those
+ * column names to WordPress post keys. The page provides forms for saving credentials,
+ * synchronizing column names with Airtable, and mapping columns to corresponding fields
+ * in WordPress posts. It also includes options for creating or updating records in WordPress
+ * based on the mapped fields.
+ *
+ * @since 1.0.0
+ * @return void
+ */
 
 if( ! function_exists("int_render_admin_page") ) { 
-    
     function int_render_admin_page() {
         ?>
         <div class="wrap"> 
@@ -289,9 +317,14 @@ if( ! function_exists("int_render_admin_page") ) {
                         </small>
 
                         <div>
+
+                            <?php if( ! get_option('int_column_keys') ) : ?>
+
                             <button type="submit" name="fetch_airtable_data" class="button button-primary">
                                 <?php _e('Fetch Airtable Columns Data', INT_ART_TEXT_DOMAIN); ?>
                             </button>
+
+                            <?php endif?>
 
                             <?php if( get_option('int_column_keys') ) : ?>
 
@@ -385,8 +418,13 @@ if( ! function_exists("int_render_admin_page") ) {
                                         <table>
                                             <tr>
                                                 <td>
-                                                    <input type="submit" name="save_columns" value="Create or Update Records" class="create-post-btn button button-primary"/>
+                                                    <input type="submit" name="save_columns" value="Save Fields Mapping" class="button button-primary save-fields-mapping"/>
                                                 </td>
+                                                <?php  if (get_option('int_column_selected_keys')) {  ?>
+                                                <td>
+                                                    <input type="submit" name="create_post" value="Create or Update Records" class="create-post-btn button button-primary"/>
+                                                </td>
+                                                <?php  }  ?>
                                             </tr>
                                         </table>
                                     </tbody>
@@ -405,11 +443,15 @@ if( ! function_exists("int_render_admin_page") ) {
 
 
 
-/** This function register admin menu in dashboard. */
+/**
+ * Registers the Airtable Integration menu in the WordPress admin dashboard.
+ *
+ * This function is hooked into the admin_menu action and adds a top-level menu
+ * page for Airtable Integration and a submenu page for the Developer Guide.
+ */
 
 if( ! function_exists("int_add_admin_menu") ) {
     function int_add_admin_menu() {
-        // Add a top-level menu page
         add_menu_page(
             __('Airtable Integration', INT_ART_TEXT_DOMAIN),
             __('Airtable Integration', INT_ART_TEXT_DOMAIN),
@@ -418,7 +460,6 @@ if( ! function_exists("int_add_admin_menu") ) {
             'int_render_admin_page'
         );
 
-        // Add a submenu under the Airtable Integration menu
         add_submenu_page(
             'int_airtable_settings',
             __('Developer Guide', INT_ART_TEXT_DOMAIN),
@@ -431,7 +472,16 @@ if( ! function_exists("int_add_admin_menu") ) {
     add_action('admin_menu', 'int_add_admin_menu');
 }
 
-// Render the submenu page
+
+/**
+ * Renders the Developer Guide submenu page.
+ *
+ * This function renders a page with a list of available shortcodes and a "Copy" button next to each one.
+ * The page is accessible via the Airtable Integration menu in the WordPress admin dashboard.
+ *
+ * @since 1.0.0
+ */
+
 
 if( ! function_exists('int_render_deveoper_page') ) {
     function int_render_deveoper_page() {

@@ -1,6 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
+
+    /** Restricted select only for one time select field key */
+
     const selects = document.querySelectorAll('.column-select');
-    const restrictedValues = ['title', 'desc', 'feature_img', 'taxonomy'];
+    const restrictedValues = ['title', 'desc', 'feature_img'];
     if( selects  ) {
         selects.forEach(select => {
            
@@ -18,7 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }  
     
 
-    /** Developer section  */
+
+    /** Developer section - Copy Shortcode on Copy button click... */
 
     let copyBtns = document.querySelectorAll('.copy-btn');
     copyBtns.forEach(button => {
@@ -30,14 +34,14 @@ document.addEventListener('DOMContentLoaded', function() {
             tempInput.select();
             document.execCommand('copy');
             
-            const buttonRef = this; // Store the button reference
-            buttonRef.innerText = 'Coping...'; // Change button text to "Coping..."
+            const buttonRef = this; 
+            buttonRef.innerText = 'Coping...'; 
             
             setTimeout(function() {
-                buttonRef.innerText = 'Copy shortcode'; // Restore button text
+                buttonRef.innerText = 'Copy shortcode'; 
             }, 250);
             
-            document.body.removeChild(tempInput); // Move this outside of setTimeout
+            document.body.removeChild(tempInput);
         });
     });
 
