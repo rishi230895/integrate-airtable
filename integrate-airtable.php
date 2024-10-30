@@ -48,6 +48,7 @@ require_once INT_ART_PLUGIN_PATH . 'includes/int-art-enqueue.php'; // Include sc
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-common.php'; // Include common functions used throughout the plugin
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-menu.php'; // Include menu definitions for the plugin settings page
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-shortcode.php'; // Include menu definitions for the plugin settings page
+require_once INT_ART_PLUGIN_PATH . 'includes/int-art-meta-box.php'; // Include menu definitions for the plugin settings page
 
 /** 
  * Define plugin activation function 
