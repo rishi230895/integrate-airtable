@@ -183,7 +183,7 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
             ]);
 
             $data = json_decode($response->getBody(), true);
-
+  
             if ( ! isset($data['records']) || empty($data['records']) ) {
 
                 /** Update option */
