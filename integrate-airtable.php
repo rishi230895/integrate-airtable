@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name:       Integrate Airtable
- * Description:       This plugin is developed to make convenient and easy integration with your WordPress website.
+ * Description:       This plugin is developed to seamlessly integrate with WordPress, offering free and easy functionality.
  * Version:           1.0.0
  * Author:            Believin-Technologies Pvt Ltd (Suraj Prakash)
  * Author URI:        https://believintech.com
@@ -41,6 +41,7 @@ if ( ! defined( 'INT_ART_TEXT_DOMAIN' ) ) {
  * This section includes all necessary files that provide the core functionality of the plugin.
  */
 require_once INT_ART_PLUGIN_PATH . 'vendor/autoload.php'; // Autoload dependencies using Composer
+require_once INT_ART_PLUGIN_PATH . 'hooks/int-art-hooks.php'; // Load neccessary plugin hooks
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-airt.cpt.php'; // Include custom post type definitions
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-enqueue.php'; // Include scripts and styles for the plugin
 require_once INT_ART_PLUGIN_PATH . 'includes/int-art-common.php'; // Include common functions used throughout the plugin
@@ -66,7 +67,7 @@ register_deactivation_hook( __FILE__, 'int_art_activator' );
 if ( ! function_exists('int_art_plugin_settings_link') ) {
     function int_art_plugin_settings_link($links) {
         // Create a settings link for the plugin
-        $settings_link = '<a href="' . admin_url('admin.php?page=int_airtable_integration') . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . admin_url('admin.php?page=int_airtable_integration') . '">' . __('Settings', INT_ART_TEXT_DOMAIN) . '</a>';
         // Add the settings link to the beginning of the links array
         array_unshift($links, $settings_link);
         return $links;

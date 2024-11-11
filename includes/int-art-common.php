@@ -155,7 +155,6 @@ if( ! function_exists("int_are_airtable_credentials_saved") ) {
  * to fetch the first record and extract the column names (field names).
  */
 
-
 if( ! function_exists("int_fetch_airtable_column_names") ) {
     function int_fetch_airtable_column_names() {
 
@@ -164,7 +163,10 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
         $api_token  = get_option('int_airtable_api_token');
 
         if ( empty($base_id) || empty($table_id) || empty($api_token) ) {
-            return __('Airtable credentials are missing.', INT_ART_TEXT_DOMAIN );
+            $message = __('Bases ID and Table ID or Name and API Token are required.', INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return; 
         }
 
         $client = new Client([
@@ -183,19 +185,17 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
             ]);
 
             $data = json_decode($response->getBody(), true);
-  
+
             if ( ! isset($data['records']) || empty($data['records']) ) {
 
-                /** Update option */
+                delete_option("int_column_keys" );
+                delete_option("int_column_selected_keys");
 
-                if( get_option('int_column_keys') ) {
-                    update_option("int_column_keys", "");
-                }
-                else {
-                    add_option("int_column_keys" , "");
-                }
+                $message = __( 'No records found in the Airtable table.' , INT_ART_TEXT_DOMAIN);
+                int_art_set_error_message($message);
+                int_art_sync_log($message);
 
-                return __( 'No records found in the Airtable table.', INT_ART_TEXT_DOMAIN );
+                return;
             }
 
             $first_record = $data['records'][0]['fields'];
@@ -205,11 +205,13 @@ if( ! function_exists("int_fetch_airtable_column_names") ) {
 
         } 
         catch (Exception $e) {
-            return __('Error fetching column names: ', INT_ART_TEXT_DOMAIN) . $e->getMessage();
+            $message = __( 'Error fetching column names: ' . $e->getMessage() , INT_ART_TEXT_DOMAIN);
+            int_art_set_error_message($message);
+            int_art_sync_log($message);
+            return;
         }
     }
 }
-
 
 /**
  * Checks if column keys are saved after fetching from the API.
