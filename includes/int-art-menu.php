@@ -305,7 +305,7 @@ if( ! function_exists("int_render_admin_page") ) {
             <div id="notices"></div>
 
             <div class="airtable-fetched-columns-wrap">
-                <h1><?php echo __("Free Version " , INT_ART_TEXT_DOMAIN); ?></h1>
+                <h1><?php echo __("Integrate Airtable - Free " , INT_ART_TEXT_DOMAIN); ?></h1>
                 <hr>
                 <h2><?php echo __("Airtable Integration Settings" , INT_ART_TEXT_DOMAIN); ?></h2>
                 <p class="setting-desc">
