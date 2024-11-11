@@ -271,6 +271,10 @@ if(  ! function_exists("int_register_settings") ) {
 
         /**  ============================== Form submission actions END ==============================   */
 
+        /** For free version allow only limited keys stored. */
+
+        int_art_slice_columns();
+
     }
 
     add_action('admin_init', 'int_register_settings');
@@ -301,7 +305,8 @@ if( ! function_exists("int_render_admin_page") ) {
             <div id="notices"></div>
 
             <div class="airtable-fetched-columns-wrap">
-
+                <h1><?php echo __("Free Version " , INT_ART_TEXT_DOMAIN); ?></h1>
+                <hr>
                 <h2><?php echo __("Airtable Integration Settings" , INT_ART_TEXT_DOMAIN); ?></h2>
                 <p class="setting-desc">
                     <?php echo __("This page features a credentials section where users must enter their credentials. Once completed, they can access the 'Fetch Columns' section to retrieve columns from Airtable. After that, the admin user can proceed to the 'Field Mapping' section, allowing them to map column names to WordPress post keys." , INT_ART_TEXT_DOMAIN);  ?>
@@ -369,14 +374,11 @@ if( ! function_exists("int_render_admin_page") ) {
                     $saved_columns = get_option('int_column_selected_keys', []);
                     $saved_columns = $saved_columns ? $saved_columns : [];
 
-                    // int_art_debugger($saved_columns);
-
                 
+        
                     if ( $columns_keys && is_array($columns_keys) && count($columns_keys) > 0) {
                         ?>
-
-                        <!-- Field Mapping Section -->
-
+                    
                         <div class="airtable-fetched-columns-wrap">
                             <form method="post" action="">
                             <h2><?php echo __("Column Field Mapping with API"); ?></h2>
@@ -398,7 +400,9 @@ if( ! function_exists("int_render_admin_page") ) {
                                     </thead>
                                     <tbody>
                                         <?php 
+                                            $counter = 0;
                                             foreach ($columns_keys as $key => $col) { 
+                                            $counter++;
                                             $selected_value = isset($saved_columns[$key]['selected']) ? $saved_columns[$key]['selected'] : ''; 
                                         ?>
                                         <tr id="<?php echo 'int_meta_row-' . $key; ?>">
@@ -411,25 +415,26 @@ if( ! function_exists("int_render_admin_page") ) {
                                             
                                             <!-- Select Option -->
                                             <td>
-                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select" >
+                                                <select name="column_select[<?php echo $key; ?>][selected]" id="<?php echo 'select_option_' . $key; ?>" class="column-select" <?php echo $counter > INT_ART_FIELDS_ACCESS_COUNT ? "disabled" : ""; ?> >
                                                     <option value="">
                                                         <?php 
-                                                            $message = 'Select field key';
+                                                            $message = $counter <= INT_ART_FIELDS_ACCESS_COUNT ? 'Select field key' : INT_ART_PRO_FEATURE;
                                                             echo __(  $message , INT_ART_TEXT_DOMAIN ); ?>
                                                     </option>
-                                                    <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
-                                                        <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
-                                                    
+                                                    <?php if( $counter <= INT_ART_FIELDS_ACCESS_COUNT ) {   ?>
+                                                        <option value="title" <?php echo ($selected_value === 'title') ? 'selected' : ''; ?> > 
+                                                            <?php echo __("Title" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="desc" <?php echo ($selected_value === 'desc') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Description" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="feature_img" <?php echo ($selected_value === 'feature_img') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Feature Image" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                        <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
+                                                            <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
+                                                        </option>
+                                                    <?php } ?>
                                                 </select>
                                             </td> 
                                             
