@@ -238,9 +238,3 @@ if(  ! function_exists("int_add_admin_menu")  ) {
     }
     add_action('admin_menu', 'int_add_admin_menu');
 }
-
-
-// echo "<pre>";
-//     var_dump(get_option("int_column_selected_keys"));
-// echo "</pre>";
-// exit;

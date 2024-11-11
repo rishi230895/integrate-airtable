@@ -475,7 +475,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
             /** Get image attachment id if image url is exist. */
 
             if( $post_feature_img && is_array($post_feature_img) ) {
-                echo int_art_sync_log("ads");
                 int_art_get_attachment_id($post_feature_img[0]['url'], $post_id);
             }
           
@@ -520,9 +519,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
         $post_desc          = $data['create_post']['desc'];
         $post_feature_img   = $data['create_post']['feature_img'];
 
-        echo "<pre>";
-            var_dump($post_feature_img);
-        echo "</pre>";
 
         if( $post_title ) {
             
@@ -719,9 +715,6 @@ if ( ! function_exists('int_art_check_post') ) {
                             $feature_img        =   $feature_column_name ? $field_data[$feature_column_name] : "";
                             $desc               =   $desc_column_name ? $field_data[$desc_column_name] : "";
 
-                            echo "<pre>";
-                            var_dump($feature_img);
-                            echo "</pre>";
             
                             if( $id ) {
                                 $prepare_data['Column id'] =  $id;
