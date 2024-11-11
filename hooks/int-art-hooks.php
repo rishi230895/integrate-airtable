@@ -64,24 +64,6 @@ if ( ! function_exists("int_art_set_success_message") ) {
     }
 }
 
-/**
- * Initializes the registration of custom taxonomies for Airtable integration.
- *
- * This function triggers the registration of taxonomies by calling the
- * `int_art_register_taxonomy` function. It is hooked into the 'init' action
- * to ensure that taxonomies are registered at the appropriate time during
- * the WordPress initialization process.
- *
- * @since 1.0.0
- * @return void
- */
-if ( ! function_exists('int_art_tax_initializer') ) {
-    function int_art_tax_initializer() {
-        int_art_register_taxonomy();
-    }
-    add_action('init', 'int_art_tax_initializer');  
-}
-
 
 /**
  * Renders a script that moves admin notices to the top of the page.

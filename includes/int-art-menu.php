@@ -177,11 +177,7 @@ if(  ! function_exists("int_register_settings") ) {
         /** Remove airtable Columns names from options table on ( Remove Airtable Column Data ) button click */
 
         if ( isset($_POST['remove_columns_data'] ) ) {
-
-            /** Remove terms and taxonomy */
             
-            int_art_unregister_taxonomies_and_delete_terms();
-
             /** Remove columns names */
             delete_option("int_column_keys" );
             delete_option("int_column_selected_keys");
@@ -433,9 +429,7 @@ if( ! function_exists("int_render_admin_page") ) {
                                                     <option value="meta_field" <?php echo ($selected_value === 'meta_field') ? 'selected' : ''; ?>>
                                                         <?php echo __("Meta Field" , INT_ART_TEXT_DOMAIN); ?>
                                                     </option>
-                                                    <option value="taxonomy" <?php echo ($selected_value === 'taxonomy') ? 'selected' : ''; ?>>
-                                                        <?php echo __("Taxonomy" , INT_ART_TEXT_DOMAIN); ?>
-                                                    </option>
+                                                    
                                                 </select>
                                             </td> 
                                             
@@ -462,26 +456,6 @@ if( ! function_exists("int_render_admin_page") ) {
                     }
                 }
             ?>
-
-            <!-- Meta Fields Display Option Section -->
-            <div class="airtable-fetched-columns-wrap">
-                <form method="post" action="">
-                    <h2><?php echo __("Meta Fields Display Option", INT_ART_TEXT_DOMAIN); ?></h2>
-                    <small class="note">
-                        <?php echo __("Select whether to display meta field data in Airtable posts.", INT_ART_TEXT_DOMAIN); ?>
-                    </small>
-                    <label>
-                        <input type="checkbox" name="int_art_show_meta_fields" value="1" <?php checked(get_option('int_art_show_meta_fields'), 1); ?> />
-                        <?php echo __("Do you want to show meta fields data in your Airtable posts?", INT_ART_TEXT_DOMAIN); ?>
-                    </label>
-                    <br>
-                    <br>
-                    <input type="submit" name="save_display_field" value="Save Display Option" class="button button-primary"/>
-                </form>
-            </div>
-
-
-
         </div>
         <?php
     }   
@@ -505,84 +479,8 @@ if( ! function_exists("int_add_admin_menu") ) {
             'int_airtable_settings',
             'int_render_admin_page'
         );
-
-        add_submenu_page(
-            'int_airtable_settings',
-            __('Developer Guide', INT_ART_TEXT_DOMAIN),
-            __('Developer Guide', INT_ART_TEXT_DOMAIN),
-            'manage_options',
-            'int_airtable_developer_guide',
-            'int_render_developer_page'
-        );
     }
     add_action('admin_menu', 'int_add_admin_menu');
 }
 
 
-/**
- * Renders the Developer Guide submenu page.
- *
- * This function renders a page with a list of available shortcodes and a "Copy" button next to each one.
- * The page is accessible via the Airtable Integration menu in the WordPress admin dashboard.
- *
- * @since 1.0.0
- */
-
-
-if( ! function_exists('int_render_developer_page') ) {
-    function int_render_developer_page() {
-        $shortcodes = [
-            '[int_art_get_meta_data_table]',
-            '[int_art_get_meta_data_table meta_field="column_name , column_name"]',
-            '[int_art_get_meta_value meta_field="column name" post_id="post_id"]'
-        ];
-
-
-        $meta_keys = int_get_unique_meta_keys_for_cpt();
-        
-    ?>
-        <div class="wrap">
-            <h2 class="top-title"><?php echo __("Developer Guide" , INT_ART_TEXT_DOMAIN); ?></h2>
-            <div class="shortcode-card">
-                <h2><?php echo __("Shortcodes" ,  INT_ART_TEXT_DOMAIN );  ?></h2>
-                <p class="note">
-                    <?php echo __('Please click the <b>"Copy Shortcode"</b> button next to the shortcode to copy it. You can use this shortcode in any editor or code, but be sure to provide valid attributes.' , INT_ART_TEXT_DOMAIN ); ?>
-                </p>
-                <?php 
-                    foreach($shortcodes as $index => $shortcode) {  
-                ?>
-                    <div class="shortcode-item">
-                        <input type="text" id="shortcode-<?php echo $index; ?>" value="<?php echo esc_html($shortcode); ?>" readonly />
-                        <button type="button" class="copy-btn" data-target="<?php echo esc_html($shortcode); ?>">
-                            <?php echo __('Copy shortcode' , INT_ART_TEXT_DOMAIN ); ?>
-                        </button>
-                    </div>
-                <?php }  ?>
-            </div>
-        </div>
-
-        <?php if( ! empty( $meta_keys ) ) {  ?>
-        <div class="wrap">
-            <h2 class="top-title"><?php echo __("Meta Fields Names" , INT_ART_TEXT_DOMAIN); ?></h2>
-            <div class="shortcode-card">
-                <h2><?php echo __("Meta Keys" ,  INT_ART_TEXT_DOMAIN );  ?></h2>
-                <p class="note">
-                    <?php echo __('To copy a meta key, simply click the <b>"Copy Meta Key"</b> button located next to the shortcode for the specific meta key you want to copy. This action will trigger the provided PHP script to handle the copying process.' , INT_ART_TEXT_DOMAIN ); ?>
-                </p>
-                <?php 
-                    foreach( $meta_keys as $index => $meta_key ) {  
-                ?>
-                    <div class="shortcode-item">
-                        <input type="text" id="shortcode-<?php echo $index; ?>" value="<?php echo esc_html($meta_key); ?>" readonly />
-                        <button type="button" class="copy-btn" data-target="<?php echo esc_html($meta_key); ?>">
-                            <?php echo __('Copy Meta Key' , INT_ART_TEXT_DOMAIN); ?>
-                        </button>
-                    </div>
-                <?php }  ?>
-            </div>
-        </div>
-        <?php }  ?>
-
-    <?php
-    }
-}

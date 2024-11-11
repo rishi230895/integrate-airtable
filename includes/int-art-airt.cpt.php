@@ -17,9 +17,6 @@
  * - Comments
  * - Revisions
  *
- * The taxonomy allows for the organization of air sync posts into 
- * categories, providing better content management and organization.
- *
  * Text domain for translation is set to 'int-airtable'.
  * 
  * Usage:

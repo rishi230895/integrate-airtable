@@ -504,7 +504,7 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
         $post_title         = $data['create_post']['title'];
         $post_desc          = $data['create_post']['desc'];
         $post_feature_img   = $data['create_post']['feature_img'];
-        $taxonomy_args      = $data['create_post']['taxonomy'];
+       
         
         if( $post_title ) {
             
@@ -540,24 +540,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
                     if( $key != 'create_post' ) {
                         $meta_key = int_sync_sanatize_string($key);
                         update_post_meta( $post_id , $meta_key , $value );
-                    }
-                }
-            }
-
-
-            /** Assign Terms to the taxonomy */
-
-            if( ! empty( $taxonomy_args ) && is_array( $taxonomy_args) ) {
-                foreach(  $taxonomy_args as $key => $value ) {
-                    $taxonomy_name = $key;
-                    $terms_data    = $value;
-                    if( $terms_data && is_array( $terms_data ) ) {
-                        foreach( $terms_data as $term ) {
-                            $term_id = int_art_get_or_create_term_by_name( $term , $taxonomy_name );
-                            if( $term_id && ! empty($term_id)) {
-                                wp_set_post_terms( $post_id, [ $term_id ], $taxonomy_name, true );
-                            }
-                        }
                     }
                 }
             }
@@ -598,7 +580,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
         $post_title         = $data['create_post']['title'];
         $post_desc          = $data['create_post']['desc'];
         $post_feature_img   = $data['create_post']['feature_img']; 
-        $taxonomy_args      = $data['create_post']['taxonomy'];
 
         if( $post_title ) {
             
@@ -646,24 +627,6 @@ if( ! function_exists( "int_create_new_airtable_data" )  ) {
                     if( $key != 'create_post' ) {
                         $meta_key = int_sync_sanatize_string($key);
                         update_post_meta( $post_id , $meta_key , $value );
-                    }
-                }
-            }
-
-
-            /** Assign Terms to the taxonomy */
-
-            if( ! empty( $taxonomy_args ) && is_array( $taxonomy_args) ) {
-                foreach(  $taxonomy_args as $key => $value ) {
-                    $taxonomy_name = $key;
-                    $terms_data    = $value;
-                    if( $terms_data && is_array( $terms_data ) ) {
-                        foreach( $terms_data as $term ) {
-                            $term_id = int_art_get_or_create_term_by_name( $term , $taxonomy_name );
-                            if( $term_id && ! empty($term_id)) {
-                                wp_set_post_terms( $post_id, [ $term_id ], $taxonomy_name, true );
-                            }
-                        }
                     }
                 }
             }
@@ -801,12 +764,7 @@ if (!function_exists("int_initalize_columns_fetch")) {
                                 $meta_field_columns_name[] = $key['column_name'];
                             }
                         }
-                    }
-
-                    $taxonomy_columns = int_art_fetch_taxonomy_keys();
-
-                    // int_art_debugger($all_records);
-                    // exit;
+                    }        
 
                     foreach ($all_records as $field) {
                         if (  array_key_exists("fields", $field)) {
@@ -818,7 +776,6 @@ if (!function_exists("int_initalize_columns_fetch")) {
                                 $title = $title_column_name && isset($field_data[$title_column_name]) ? $field_data[$title_column_name] : '';
                                 $feature_img = $feature_column_name && isset($field_data[$feature_column_name]) ? $field_data[$feature_column_name] : '';
                                 $desc = $desc_column_name && isset($field_data[$desc_column_name]) ? $field_data[$desc_column_name] : '';
-                                $taxonomy_data = [];
     
                                 if ($id) {
                                     $prepare_data['Column id'] = $id;
@@ -834,41 +791,13 @@ if (!function_exists("int_initalize_columns_fetch")) {
                                     }
                                 }
     
-                                /** Taxonomy */
-    
-                                if( ! empty( $taxonomy_columns ) && is_array( $taxonomy_columns ) ) {
-                                    foreach( $taxonomy_columns as $tax_field_name ) {
-                                        
-                                        // Check if the key exists in $field_data before accessing it
-    
-                                        if (isset($field_data[ $tax_field_name ])) {
-                                            $tax_data = $field_data[ $tax_field_name ];
-                                            $meta_key = int_art_split_into_hypens( $tax_field_name );
-                                            $temp_data = [];
-                                
-                                            if( ! empty( $tax_data ) && is_array( $tax_data ) ) {
-                                                foreach( $tax_data as $key => $value ) {
-                                                    $temp_data[] = $value;
-                                                }
-                                            }
-                                
-                                            if( ! empty( $tax_data ) && ( is_numeric( $tax_data ) || is_string( $tax_data ) ) ) {
-                                                $temp_data[] = $tax_data;
-                                            }
-                                
-                                            if( $temp_data ) {
-                                                $taxonomy_data[$meta_key] = $temp_data;
-                                            }
-                                        }
-                                    }
-                                }
+                              
                                 
                                 $post_creation = [
                                     'id'            => $id,
                                     'title'         => $title,
                                     'desc'          => $desc,
                                     'feature_img'   => $feature_img,
-                                    'taxonomy'      => $taxonomy_data
                                 ];
     
                                 $prepare_data['create_post'] = $post_creation;
@@ -1084,134 +1013,6 @@ if( ! function_exists("int_art_split_meta_key") ) {
 
 
 /**
- * Fetches taxonomy column names from saved columns in the option table.
- *
- * Retrieves the saved column names from the 'int_column_selected_keys' option, loops through the array to find the taxonomy column names, and returns them in an array.
- *
- * @return array An array of taxonomy column names.
- */
-
- if( ! function_exists('int_art_fetch_taxonomy_keys') ) {
-    function int_art_fetch_taxonomy_keys() {
-
-        $taxonomies = [];
-        $columns_names  = get_option("int_column_selected_keys");
-        $columns_names  = $columns_names ? $columns_names : [];
-
-        if( $columns_names && is_array( $columns_names ) ) {
-
-            foreach( $columns_names as $col ) {
-                if( $col['selected'] == 'taxonomy' ) {
-                    $taxonomies[] = $col['column_name'];
-                }
-            }
-        }
-
-        return $taxonomies;
-    }
-}
-
-
-/**
- * Registers dynamic taxonomies based on the column names that are selected as taxonomies in the Airtable integration settings.
- *
- * This function registers a taxonomy for each column name that is selected as a taxonomy in the Airtable integration settings.
- * The taxonomy name is the column name with spaces and special characters replaced, and the taxonomy slug is the taxonomy name
- * with spaces and special characters replaced and converted to lowercase.
- *
- * @since 1.0.0
- */
-
- 
-if( ! function_exists("int_art_register_taxonomy") ) {
-    function int_art_register_taxonomy() {
-
-        $taxonomies = int_art_fetch_taxonomy_keys();
-        
-        if( $taxonomies  ) {
-
-            foreach( $taxonomies as $taxonomy_name ) {
-
-                $taxonomy_name = sanitize_text_field($taxonomy_name);
-                $taxonomy_name = ucwords($taxonomy_name);
-
-                $taxonomy_slug = sanitize_title($taxonomy_name);
-                $taxonomy_slug = int_art_split_into_hypens( $taxonomy_slug );
-
-                if ( ! taxonomy_exists($taxonomy_slug) ) {
-
-                    $taxonomy_labels = array(
-                        'name'              => sprintf( _x('%s Categories', 'taxonomy general name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'singular_name'     => sprintf( _x('%s Category', 'taxonomy singular name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'search_items'      => sprintf( __('Search %s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'all_items'         => sprintf( __('All %s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'parent_item'       => sprintf( __('Parent %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'parent_item_colon' => sprintf( __('Parent %s Category:', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'edit_item'         => sprintf( __('Edit %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'update_item'       => sprintf( __('Update %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'add_new_item'      => sprintf( __('Add New %s Category', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'new_item_name'     => sprintf( __('New %s Category Name', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                        'menu_name'         => sprintf( __('%s Categories', INT_ART_TEXT_DOMAIN), $taxonomy_name ),
-                    );
-
-                    $taxonomy_args = array(
-                        'hierarchical'      => true,
-                        'labels'            => $taxonomy_labels,
-                        'show_ui'           => true,
-                        'show_admin_column' => true,
-                        'query_var'         => true,
-                        'rewrite'           => array( 'slug' => $taxonomy_slug ),
-                    );
-
-                    register_taxonomy( $taxonomy_slug, array( 'air-sync' ), $taxonomy_args );
-                }
-            }
-        }
-    }
-}
-
-/**
- * Unregisters taxonomies and deletes all associated terms.
- *
- * This function retrieves taxonomy keys from the Airtable integration settings,
- * sanitizes and formats them into slugs, and checks if each taxonomy exists. 
- * If a taxonomy exists, it retrieves all associated terms and deletes them from 
- * the WordPress database. Finally, it unregisters the taxonomy.
- *
- * The function is useful for cleaning up dynamic taxonomies and terms that 
- * were registered and created through the integration.
- *
- * @return void
- */
-
-if ( ! function_exists( "int_art_unregister_taxonomies_and_delete_terms" ) ) {
-    function int_art_unregister_taxonomies_and_delete_terms() {
-        $taxonomies = int_art_fetch_taxonomy_keys();
-        if ( $taxonomies ) {
-            foreach ( $taxonomies as $taxonomy_name ) {
-                $taxonomy_name = sanitize_text_field( $taxonomy_name );
-                $taxonomy_slug = sanitize_title( ucwords( $taxonomy_name ) );
-                $taxonomy_slug = int_art_split_into_hypens( $taxonomy_slug );
-                if ( taxonomy_exists( $taxonomy_slug ) ) {
-                    $terms = get_terms( [
-                        'taxonomy'   => $taxonomy_slug,
-                        'hide_empty' => false,
-                    ] );
-
-                    if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
-                        foreach ( $terms as $term ) {
-                            wp_delete_term( $term->term_id, $taxonomy_slug );
-                        }
-                    }
-                    unregister_taxonomy( $taxonomy_slug );
-                }
-            }
-        }
-    }
-}
-
-
-/**
  * Converts a string to lowercase, splits it by spaces, and joins the words with hyphens.
  *
  * @param string $str The input string to be transformed.
@@ -1227,36 +1028,6 @@ if( ! function_exists('int_art_split_into_hypens') ) {
         return implode('-', $words);    
     }   
 }   
-
-
-
-/**
- * Retrieves the ID of a term by name, or creates a new term if none exists
- *
- * @param string $term_name The name of the term to retrieve or create
- * @param string $taxonomy_name The name of the taxonomy to which the term belongs
- *
- * @return int|false The ID of the term if found, the new term ID if created, or false if an error occurred
- */
-
-
-if( ! function_exists('int_art_get_or_create_term_by_name') ) {
-    function int_art_get_or_create_term_by_name( $term_name, $taxonomy_name ) {
-       
-        $term = term_exists( $term_name, $taxonomy_name );
-        if ( $term !== 0 && $term !== null ) {
-            return is_array( $term ) ? $term['term_id'] : $term;
-        }
-        
-        $new_term = wp_insert_term( $term_name, $taxonomy_name );
-        
-        if ( ! is_wp_error( $new_term ) ) {
-            return $new_term['term_id'];
-        }
-        
-        return false;
-    }      
-}
 
 /**
  * Retrieves custom meta fields associated with a post by a given prefix.
